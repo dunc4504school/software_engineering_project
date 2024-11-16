@@ -1,0 +1,100 @@
+/* styles.css */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Pacifico';
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background: linear-gradient(135deg, #0096c7, #90e0ef);
+    color: #333;
+}
+
+.profile-container {
+    background-color: rgba(255, 255, 255, 0.9);
+    padding: 30px;
+    width: 400px;
+    border-radius: 10px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    text-align: center;
+}
+
+h2 {
+    font-size: 2em;
+    color: #0077b6;
+    margin-bottom: 20px;
+}
+
+form label {
+    display: block;
+    margin: 10px 0 5px;
+    color: #0077b6;
+    font-weight: bold;
+}
+
+form input, form select {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    border: 1px solid #0077b6;
+    font-size: 1em;
+}
+
+form textarea {
+    resize: vertical;
+}
+
+/* styles.css */
+.checkbox-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;  /* Two equal columns */
+    gap: 20px;  /* Space between columns */
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.checkbox-column label {
+    display: block;
+    margin: 5px 0;
+    font-size: 1em;
+    color: #0077b6;
+}
+
+.checkbox-column input {
+    margin-right: 8px;  /* Space between checkbox and label */
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 5px;
+    background-color: #0077b6;
+    color: white;
+    font-size: 1.2em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+button:hover {
+    background-color: #005f87;
+}
+
+#profile-preview {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    margin-top: 10px;
+    margin-bottom: 15px;
+    object-fit: cover;
+    border: 2px solid #0077b6;
+}
+
