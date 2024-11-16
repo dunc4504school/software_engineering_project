@@ -15,9 +15,12 @@ CREATE TABLE media (
     type INT,
     genre INT,
     date_released DATE,
+    studio VARCHAR(100),
+    producer VARCHAR(100),
     name VARCHAR(50),
     full_average REAL,
     total_reviews INT,
+
     FOREIGN KEY (type) REFERENCES type(id),
     FOREIGN KEY (genre) REFERENCES genre(id),
     primary key (id)
@@ -26,7 +29,10 @@ CREATE TABLE media (
 CREATE TABLE account (
     id  SERIAL,
     name VARCHAR(30),
+    username VARCHAR(50),
     date_created DATE,
+    email VARCHAR(50),
+    phone VARCHAR(10),
     total_reviews INT DEFAULT 0,
     total_followers INT DEFAULT 0,
     total_following INT DEFAULT 0,
