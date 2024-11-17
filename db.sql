@@ -26,6 +26,7 @@ CREATE TABLE media (
     primary key (id)
 );
 
+
 CREATE TABLE account (
     id  SERIAL,
     name VARCHAR(30),
@@ -33,11 +34,13 @@ CREATE TABLE account (
     date_created DATE,
     email VARCHAR(50),
     phone VARCHAR(10),
+    password VARCHAR(30),
     total_reviews INT DEFAULT 0,
     total_followers INT DEFAULT 0,
     total_following INT DEFAULT 0,
     primary key (id)
 );
+ALTER TABLE account ADD CONSTRAINT unique_user UNIQUE (username);
 
 CREATE TABLE review (
     account_id INT,
