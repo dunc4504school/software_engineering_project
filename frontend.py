@@ -3,7 +3,7 @@ import psycopg2
 import pandas as pd
 
 # Set page configuration
-st.set_page_config(page_title="Movie Recommendation System", page_icon="🎥")
+st.set_page_config(page_title="Movie System", page_icon="🎥")
 
 # Initialize session state for page navigation
 if "current_page" not in st.session_state:
