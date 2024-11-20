@@ -11,7 +11,7 @@ if "current_page" not in st.session_state:
 
 # Function to render the signup page
 def signup_page():
-    st.title("🎥 Movie Recommendation System")
+    st.title("🎥 Movie System")
     st.subheader("Signup Page")
 
     # Unique form key
