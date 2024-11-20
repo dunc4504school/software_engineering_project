@@ -1,4 +1,6 @@
 import streamlit as st
+import psycopg2
+import pandas as pd
 
 # Set page configuration
 st.set_page_config(page_title="Movie Recommendation System", page_icon="🎥")
@@ -139,6 +141,7 @@ def social_page():
     st.write("🎬 *Alex just watched Inception!*")
 
 
+# Updated search page
 def search_page():
     if st.button("⬅️ Back to Homepage"):
         st.session_state["current_page"] = "homepage"
@@ -147,17 +150,160 @@ def search_page():
     st.subheader("Find Movies and TV Shows")
     st.write("Search our library for your favorite content or discover something new.")
     
-    # Placeholder for search bar
-    st.text_input("Search...", placeholder="Enter movie or TV show name")
-    st.button("Search")
-    st.markdown("**Search Results:**")
-    st.write("🔎 Example Result: *The Dark Knight (2008)*")
+    # Search input
+    query = st.text_input("Search Movies:")
+    if query:
+        search_movies(query)
 
+# Database connection function
+def get_connection():
+    return psycopg2.connect(
+        host="localhost",       # Your database host
+        database="movie_db",    # Your database name
+        user="heslip",       # Your database username
+        password="GavinLeafs2003!" # Your database password
+    )
+
+def get_movie_details(movie_id):
+    """
+    Retrieve detailed information about a specific movie.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    sql = """
+        SELECT media.id, media.name, type.name AS type, genre.name AS genre, media.date_released, media.full_average, media.total_reviews
+        FROM media
+        JOIN type ON media.type = type.id
+        JOIN genre ON media.genre = genre.id
+        WHERE media.id = %s
+    """
+    cur.execute(sql, (movie_id,))
+    result = cur.fetchone()
+    cur.close()
+    conn.close()
+    return result
+
+
+def search_movies(query):
+    """
+    Search for movies based on the query and display them as clickable links.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+
+    sql = """
+        SELECT media.id, media.name, type.name AS type, genre.name AS genre, media.date_released
+        FROM media
+        JOIN type ON media.type = type.id
+        JOIN genre ON media.genre = genre.id
+        WHERE 
+            LOWER(media.name) LIKE %s OR
+            LOWER(type.name) LIKE %s OR
+            LOWER(genre.name) LIKE %s OR
+            TO_CHAR(media.date_released, 'YYYY-MM-DD') LIKE %s
+    """
+    search_term = f"%{query.lower()}%"
+    cur.execute(sql, (search_term, search_term, search_term, search_term))
+    results = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    if not results:
+        st.write("No results found")
+        return
+
+    df = pd.DataFrame(results, columns=["ID", "Name", "Type", "Genre", "Release Date"])
+    df['Release Date'] = pd.to_datetime(df['Release Date']).dt.strftime('%B %d, %Y')  # Format date
+
+    for _, row in df.iterrows():
+        st.markdown(
+            f"[{row['Name']}](#)",
+            unsafe_allow_html=True,
+            key=f"movie_{row['ID']}",
+            on_click=lambda movie_id=row['ID']: open_movie_profile(movie_id)
+        )
+
+
+def open_movie_profile(movie_id):
+    """
+    Open the profile page for a specific movie.
+    """
+    st.session_state.page = "profile"
+    st.session_state.selected_movie_id = movie_id
+
+
+def movie_profile_page():
+    """
+    Display the profile page for a selected movie.
+    """
+    movie_id = st.session_state.selected_movie_id
+    movie = get_movie_details(movie_id)
+
+    if not movie:
+        st.write("Movie not found")
+        return
+
+    st.markdown(f"## {movie[1]}")
+    st.write(f"**Type:** {movie[2]}")
+    st.write(f"**Genre:** {movie[3]}")
+    st.write(f"**Release Date:** {pd.to_datetime(movie[4]).strftime('%B %d, %Y')}")
+    st.write(f"**Average Rating:** {movie[5]}")
+    st.write(f"**Total Reviews:** {movie[6]}")
+
+    # Back button to go to search
+    if st.button("Back to Search"):
+        st.session_state.page = "search"
+        st.session_state.selected_movie_id = None
+
+
+def main():
+    """
+    Main function to handle navigation and rendering.
+    """
+    if st.session_state.page == "search":
+        st.title("Movie Search")
+        query = st.text_input("Search for movies:")
+        if st.button("Search"):
+            search_movies(query)
+    elif st.session_state.page == "profile":
+        movie_profile_page()
+
+        # Convert results to a pandas DataFrame for better display
+        df = pd.DataFrame(results, columns=["ID", "Name", "Type", "Genre", "Release Date"])
+
+        # Check if the DataFrame is empty
+        if df.empty:
+            st.write("No results found")
+            return None
+
+        # Format columns for better display
+        df['Release Date'] = pd.to_datetime(df['Release Date']).dt.strftime('%B %d, %Y')  # Format date
+        df = df.set_index("ID")  # Set movie ID as the index for cleaner output
+
+        # Generate HTML output
+        movie_html = ""
+        for index, row in df.iterrows():
+            movie_html += f"""
+                <p><b>{row['Name']}</b> <i>{row['Type']}</i> <u>{row['Genre']}</u> <font color='blue'>{row['Release Date']}</font></p>
+            """
+
+        # Display the HTML formatted results using st.markdown
+        st.markdown(movie_html, unsafe_allow_html=True)
+
+    try:
+        # Code that might raise an exception
+        conn = get_connection()
+        cur = conn.cursor()
+        # Your SQL logic or other code here
+        cur.close()
+        conn.close()
+    except Exception as e:
+        st.write(f"An error occurred: {e}")
 
 
 # Navigation Block
 if "current_page" not in st.session_state:
-    st.session_state["current_page"] = "signup"
+    st.session_state["current_page"] = "signup"  # Default page
 
 if st.session_state["current_page"] == "signup":
     signup_page()
@@ -173,5 +319,8 @@ elif st.session_state["current_page"] == "social":
     social_page()
 elif st.session_state["current_page"] == "search":
     search_page()
+elif st.session_state["current_page"] == "movie_profile":
+    movie_profile_page()
+
 
 
