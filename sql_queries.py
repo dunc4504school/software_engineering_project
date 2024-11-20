@@ -114,6 +114,22 @@ def get_searched_media():
               WHERE name LIKE %s
     """
 
+def get_media():
+    return """SELECT id,
+                     name,
+                     type,
+                     genre,
+                     date_released,
+                     studio,
+                     producer,
+                     full_average,
+                     total_reviews
+              FROM MEDIA
+              WHERE id = %s
+    """
+
+
+
 def get_account_summary():
     return f"""SELECT id, 
                     name, 
