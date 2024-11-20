@@ -18,8 +18,8 @@ CREATE TABLE media (
     studio VARCHAR(100),
     producer VARCHAR(100),
     name VARCHAR(50),
-    full_average REAL,
-    total_reviews INT,
+    full_average REAL DEFAULT 0,
+    total_reviews INT DEFAULT 0,
 
     FOREIGN KEY (type) REFERENCES type(id),
     FOREIGN KEY (genre) REFERENCES genre(id),
