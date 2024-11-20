@@ -128,8 +128,6 @@ def get_media():
               WHERE id = %s
     """
 
-
-
 def get_account_summary():
     return f"""SELECT id, 
                     name, 
