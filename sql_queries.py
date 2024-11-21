@@ -124,6 +124,8 @@ def get_searched_media():
                      name,
                      type,
                      genre,
+                     genre2,
+                     genre3,
                      date_released,
                      studio,
                      producer,
@@ -139,6 +141,8 @@ def get_media():
                      name,
                      type,
                      genre,
+                     genre2,
+                     genre3,
                      date_released,
                      studio,
                      producer,
@@ -192,14 +196,18 @@ def get_account_review():
        r.rating - m.full_average,
        r.description, 
        g.name AS genre_name,  
+       g2.name As genre2_name,
+       g3.name As genre3_name,
        t.name AS type_name    
         FROM review r
         JOIN media m ON r.media_id = m.id
         LEFT JOIN review orr ON orr.media_id = r.media_id
-        LEFT JOIN genre g ON m.genre = g.id   
+        LEFT JOIN genre g ON m.genre = g.id
+        LEFT JOIN genre g2 ON m.genre2 = g2.id
+        LEFT JOIN genre g3 ON m.genre3 = g3.id   
         LEFT JOIN type t ON m.type = t.id    
         WHERE r.account_id = %s
-        GROUP BY r.media_id, r.rating, r.description, m.name, m.full_average, g.name, t.name;
+        GROUP BY r.media_id, r.rating, r.description, m.name, m.full_average, g.name, g2.name, g3.name, t.name;
     """
 
 #Returns the list of account that follow this account
@@ -225,6 +233,8 @@ def get_account_recent():
     return """
     SELECT t.name AS type_name,
        g.name AS genre_name,
+       g2.name As genre2_name,
+       g3.name As genre3_name,
        m.name AS media_name,
        a.name AS account_name,
        r.rating,
@@ -233,7 +243,9 @@ def get_account_recent():
     FROM review r
     JOIN account a ON r.account_id = a.id
     JOIN media m ON r.media_id = m.id
-    JOIN genre g ON m.genre = g.id  
+    JOIN genre g ON m.genre = g.id
+    JOIN genre g2 ON m.genre2 = g2.id
+    JOIN genre g3 ON m.genre3 = g3.id  
     JOIN type t ON m.type = t.id   
     WHERE a.id IN (
         SELECT follows_id
