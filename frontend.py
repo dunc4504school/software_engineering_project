@@ -251,7 +251,7 @@ def search_page():
                 '>
                     <h3 style='color: #333;'>{row['Name']}</h3>
                     <p><b>Type:</b> {row['Type']}</p>
-                    <p><b>Genre:</b> {row['Genre']}</p>
+                    <p><b>Genre:</b> {row['Genres']}</p>
                     <p><b>Release Date:</b> {row['Release']}</p>
                 </div>
                 """, unsafe_allow_html=True)
@@ -306,64 +306,73 @@ def search_page():
 
 
 def search_movies(query):
-    sql = """
-        SELECT media.id, media.name, type.name AS type, genre.name AS genre, media.date_released
-        FROM media
-        JOIN type ON media.type = type.id
-        JOIN genre ON media.genre = genre.id
-        WHERE 
-            LOWER(media.name) LIKE %s OR
-            LOWER(type.name) LIKE %s OR
-            LOWER(genre.name) LIKE %s OR
-            TO_CHAR(media.date_released, 'YYYY-MM-DD') LIKE %s
-    """
+    sql = sq.search_movies_by_attributes()
     search_term = f"%{query.lower()}%"
-    cur.execute(sql, (search_term, search_term, search_term, search_term))
+    conn = get_connection()  # Ensure a valid DB connection
+    cur = conn.cursor()
+    cur.execute(sql, (search_term, search_term, search_term, search_term, search_term, search_term))
     results = cur.fetchall()
     cur.close()
     conn.close()
+    
     if not results:
         return pd.DataFrame()
-    return pd.DataFrame(results, columns=["ID", "Name", "Type", "Genre", "Release"])
+    
+    return pd.DataFrame(results, columns=["ID", "Name", "Type", "Genres", "Release"])
+
 
 
 def movie_profile_page():
-    movie_id = st.session_state.get("selected_movie_id")
-    if not movie_id:
-        st.error("No movie selected.")
-        return
+    movie_id = st.session_state.get("selected_movie_id") # Or the actual movie ID you are retrieving
     movie = get_movie_details(movie_id)
-    if not movie:
-        st.error("Error loading movie details.")
-        return
-    st.title(movie[1])
-    st.write(f"**Type:** {movie[2]}")
-    st.write(f"**Genre:** {movie[3]}")
-    st.write(f"**Release Date:** {pd.to_datetime(movie[4]).strftime('%B %d, %Y')}")
-    st.write(f"**Average Rating:** {movie[5]}")
-    st.write(f"**Total Reviews:** {movie[6]}")
+
     if st.button("Back to Search"):
         st.session_state["current_page"] = "search"
         st.rerun()
+    
+    if movie:  # Ensure movie is not None
+        st.title(movie['Name'])  # Use the dictionary key 'Name' instead of movie[1]
+        
+        # Display other movie details
+        st.write(f"Type: {movie['Type']}")
+        st.write(f"Genres: {movie['Genres']}")
+        st.write(f"Release Date: {movie['Release']}")
+        st.write(f"Average Rating: {movie['Average Rating']}")
+        st.write(f"Total Reviews: {movie['Total Reviews']}")
+
+    else:
+        st.error("Movie details not found.")
 
 # Function to fetch movie details
 def get_movie_details(movie_id):
     try:
         conn = get_connection()
         cur = conn.cursor()
-        sql = """
-            SELECT media.id, media.name, type.name AS type, genre.name AS genre, 
-                   media.date_released, media.full_average, media.total_reviews
-            FROM media
-            JOIN type ON media.type = type.id
-            JOIN genre ON media.genre = genre.id
-            WHERE media.id = %s
-        """
+        sql = sq.get_media_genre_names()
         cur.execute(sql, (movie_id,))
         result = cur.fetchone()
         cur.close()
         conn.close()
-        return result
+         
+        if result:
+            movie = result[0]  # ID
+            movie_name = result[1]  # Name
+            movie_type = result[2]  # Type
+            movie_genres = ', '.join([str(result[i]) for i in range(3, 6) if result[i]])  # Join all non-null genres
+            release_date = pd.to_datetime(result[6]).strftime('%B %d, %Y')
+            avg_rating = result[7]  # Average Rating
+            total_reviews = result[8]  # Total Reviews
+            
+            return {
+                "ID": movie,
+                "Name": movie_name,
+                "Type": movie_type,
+                "Genres": movie_genres,
+                "Release": release_date,
+                "Average Rating": avg_rating,
+                "Total Reviews": total_reviews
+            }
+        return None
     except Exception as e:
         st.error(f"Error fetching movie details: {e}")
         return None
@@ -421,6 +430,3 @@ elif st.session_state["current_page"] == "search":
 
 elif st.session_state["current_page"] == "movie_profile":
     movie_profile_page()
-
-
-
