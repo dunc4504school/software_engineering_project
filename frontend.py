@@ -1,6 +1,7 @@
 import streamlit as st
 import psycopg2
 import pandas as pd
+import sql_queries as sq
 
 # Set page configuration
 st.set_page_config(page_title="Movie System", page_icon="🎥")
@@ -8,6 +9,24 @@ st.set_page_config(page_title="Movie System", page_icon="🎥")
 # Initialize session state for page navigation
 if "current_page" not in st.session_state:
     st.session_state["current_page"] = "signup"
+
+if "selected_movie_id" not in st.session_state:
+    st.session_state["selected_movie_id"] = None
+
+
+# Database connection function
+def get_connection():
+    return psycopg2.connect(
+        host="localhost",       # Your database host
+        database="cp317_final",    # Your database name
+        user="heslip",       # Your database username
+        password="pass123" # Your database password
+    )
+
+# Create connection and cursor for DB
+conn = get_connection()
+cur = conn.cursor()
+
 
 # Function to render the signup page
 def signup_page():
@@ -71,7 +90,7 @@ def homepage():
     # Add an image banner
     st.image(
         "https://via.placeholder.com/800x200.png?text=Your+Movie+Recommendation+System",
-        use_column_width=True,
+        use_container_width=True,
         caption="Explore Reviews, Manage Your Account, Connect Socially, and Search for Movies!"
     )
 
@@ -141,56 +160,88 @@ def social_page():
     st.write("🎬 *Alex just watched Inception!*")
 
 
-# Updated search page
 def search_page():
-    if st.button("⬅️ Back to Homepage"):
-        st.session_state["current_page"] = "homepage"
+    st.title("🔍 Search for Movies")
 
-    st.title("🔍 Search")
-    st.subheader("Find Movies and TV Shows")
-    st.write("Search our library for your favorite content or discover something new.")
+    if st.button("Back to Homepage"):
+        st.session_state["current_page"] = "homepage"
+        st.rerun()
     
-    # Search input
+    # Search bar
     query = st.text_input("Search Movies:")
     if query:
-        search_movies(query)
+        movies = search_movies(query)
+        if movies.empty:
+            st.write("No results found.")
+        else:
+            # Loop through the DataFrame and display each movie in a styled card
+            for _, row in movies.iterrows():
+                # Display movie info as a styled card
+                st.markdown(f"""
+                <div style='
+                    background: #ffffff;
+                    border-radius: 10px;
+                    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+                    margin-bottom: 20px;
+                    padding: 20px;
+                '>
+                    <h3 style='color: #333;'>{row['Name']}</h3>
+                    <p><b>Type:</b> {row['Type']}</p>
+                    <p><b>Genre:</b> {row['Genre']}</p>
+                    <p><b>Release Date:</b> {row['Release']}</p>
+                </div>
+                """, unsafe_allow_html=True)
 
-# Database connection function
-def get_connection():
-    return psycopg2.connect(
-        host="localhost",       # Your database host
-        database="movie_db",    # Your database name
-        user="heslip",       # Your database username
-        password="GavinLeafs2003!" # Your database password
-    )
+                # Create a Streamlit button for viewing details
+                if st.button(f"View Details for {row['Name']}"):
+                    st.session_state["selected_movie_id"] = row["ID"]
+                    st.session_state["current_page"] = "movie_profile"
+                    st.rerun()
 
-def get_movie_details(movie_id):
-    """
-    Retrieve detailed information about a specific movie.
-    """
-    conn = get_connection()
-    cur = conn.cursor()
-    sql = """
-        SELECT media.id, media.name, type.name AS type, genre.name AS genre, media.date_released, media.full_average, media.total_reviews
-        FROM media
-        JOIN type ON media.type = type.id
-        JOIN genre ON media.genre = genre.id
-        WHERE media.id = %s
-    """
-    cur.execute(sql, (movie_id,))
-    result = cur.fetchone()
-    cur.close()
-    conn.close()
-    return result
+    # Global Recommendations Section
+    st.subheader("🌍 Global Recommendations")
+    # Placeholder for global recommendations (e.g., most popular movies globally)
+    st.markdown("""
+    <div style="
+        background: #f1f1f1;
+        border-radius: 10px;
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        padding: 20px;
+    ">
+        <h4 style='color: #333;'>Here are some movies recommended globally:</h4>
+        <ul>
+            <li><b>Movie 1</b> - Genre: Action, Rating: 9.0/10</li>
+            <li><b>Movie 2</b> - Genre: Drama, Rating: 8.7/10</li>
+            <li><b>Movie 3</b> - Genre: Comedy, Rating: 8.5/10</li>
+            <li><b>Movie 4</b> - Genre: Thriller, Rating: 8.3/10</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Friends' Recommendations Section
+    st.subheader("👫 Friends' Recommendations")
+    # Placeholder for friends' recommendations (e.g., movies recommended by friends)
+    st.markdown("""
+    <div style="
+        background: #f1f1f1;
+        border-radius: 10px;
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        padding: 20px;
+    ">
+        <h4 style='color: #333;'>Here are some movies recommended by your friends:</h4>
+        <ul>
+            <li><b>Movie A</b> - Genre: Romance, Rating: 8.8/10</li>
+            <li><b>Movie B</b> - Genre: Sci-Fi, Rating: 8.6/10</li>
+            <li><b>Movie C</b> - Genre: Action, Rating: 8.4/10</li>
+            <li><b>Movie D</b> - Genre: Horror, Rating: 8.2/10</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 def search_movies(query):
-    """
-    Search for movies based on the query and display them as clickable links.
-    """
-    conn = get_connection()
-    cur = conn.cursor()
-
     sql = """
         SELECT media.id, media.name, type.name AS type, genre.name AS genre, media.date_released
         FROM media
@@ -207,99 +258,74 @@ def search_movies(query):
     results = cur.fetchall()
     cur.close()
     conn.close()
-
     if not results:
-        st.write("No results found")
-        return
-
-    df = pd.DataFrame(results, columns=["ID", "Name", "Type", "Genre", "Release Date"])
-    df['Release Date'] = pd.to_datetime(df['Release Date']).dt.strftime('%B %d, %Y')  # Format date
-
-    for _, row in df.iterrows():
-        st.markdown(
-            f"[{row['Name']}](#)",
-            unsafe_allow_html=True,
-            key=f"movie_{row['ID']}",
-            on_click=lambda movie_id=row['ID']: open_movie_profile(movie_id)
-        )
-
-
-def open_movie_profile(movie_id):
-    """
-    Open the profile page for a specific movie.
-    """
-    st.session_state.page = "profile"
-    st.session_state.selected_movie_id = movie_id
+        return pd.DataFrame()
+    return pd.DataFrame(results, columns=["ID", "Name", "Type", "Genre", "Release"])
 
 
 def movie_profile_page():
-    """
-    Display the profile page for a selected movie.
-    """
-    movie_id = st.session_state.selected_movie_id
-    movie = get_movie_details(movie_id)
-
-    if not movie:
-        st.write("Movie not found")
+    movie_id = st.session_state.get("selected_movie_id")
+    if not movie_id:
+        st.error("No movie selected.")
         return
-
-    st.markdown(f"## {movie[1]}")
+    movie = get_movie_details(movie_id)
+    if not movie:
+        st.error("Error loading movie details.")
+        return
+    st.title(movie[1])
     st.write(f"**Type:** {movie[2]}")
     st.write(f"**Genre:** {movie[3]}")
     st.write(f"**Release Date:** {pd.to_datetime(movie[4]).strftime('%B %d, %Y')}")
     st.write(f"**Average Rating:** {movie[5]}")
     st.write(f"**Total Reviews:** {movie[6]}")
-
-    # Back button to go to search
     if st.button("Back to Search"):
-        st.session_state.page = "search"
-        st.session_state.selected_movie_id = None
+        st.session_state["current_page"] = "search"
+        st.rerun()
 
-
-def main():
-    """
-    Main function to handle navigation and rendering.
-    """
-    if st.session_state.page == "search":
-        st.title("Movie Search")
-        query = st.text_input("Search for movies:")
-        if st.button("Search"):
-            search_movies(query)
-    elif st.session_state.page == "profile":
-        movie_profile_page()
-
-        # Convert results to a pandas DataFrame for better display
-        df = pd.DataFrame(results, columns=["ID", "Name", "Type", "Genre", "Release Date"])
-
-        # Check if the DataFrame is empty
-        if df.empty:
-            st.write("No results found")
-            return None
-
-        # Format columns for better display
-        df['Release Date'] = pd.to_datetime(df['Release Date']).dt.strftime('%B %d, %Y')  # Format date
-        df = df.set_index("ID")  # Set movie ID as the index for cleaner output
-
-        # Generate HTML output
-        movie_html = ""
-        for index, row in df.iterrows():
-            movie_html += f"""
-                <p><b>{row['Name']}</b> <i>{row['Type']}</i> <u>{row['Genre']}</u> <font color='blue'>{row['Release Date']}</font></p>
-            """
-
-        # Display the HTML formatted results using st.markdown
-        st.markdown(movie_html, unsafe_allow_html=True)
-
+# Function to fetch movie details
+def get_movie_details(movie_id):
     try:
-        # Code that might raise an exception
         conn = get_connection()
         cur = conn.cursor()
-        # Your SQL logic or other code here
+        sql = """
+            SELECT media.id, media.name, type.name AS type, genre.name AS genre, 
+                   media.date_released, media.full_average, media.total_reviews
+            FROM media
+            JOIN type ON media.type = type.id
+            JOIN genre ON media.genre = genre.id
+            WHERE media.id = %s
+        """
+        cur.execute(sql, (movie_id,))
+        result = cur.fetchone()
         cur.close()
         conn.close()
+        return result
     except Exception as e:
-        st.write(f"An error occurred: {e}")
+        st.error(f"Error fetching movie details: {e}")
+        return None
 
+
+# Add custom CSS for background and buttons
+st.markdown("""
+    <style>
+    body {
+        background: linear-gradient(120deg, #f6d365 0%, #fda085 100%);
+        color: #444;
+    }
+    button {
+        background-color: #ff7f50;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+    }
+    button:hover {
+        background-color: grey;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # Navigation Block
 if "current_page" not in st.session_state:
@@ -307,18 +333,24 @@ if "current_page" not in st.session_state:
 
 if st.session_state["current_page"] == "signup":
     signup_page()
+
 elif st.session_state["current_page"] == "create_account":
     create_account_page()
 elif st.session_state["current_page"] == "homepage":
     homepage()
+
 elif st.session_state["current_page"] == "reviews":
     reviews_page()
+
 elif st.session_state["current_page"] == "account":
     account_page()
+
 elif st.session_state["current_page"] == "social":
     social_page()
+
 elif st.session_state["current_page"] == "search":
     search_page()
+
 elif st.session_state["current_page"] == "movie_profile":
     movie_profile_page()
 
