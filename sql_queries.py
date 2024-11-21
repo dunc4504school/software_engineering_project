@@ -152,6 +152,24 @@ def get_media():
               WHERE id = %s
     """
 
+# Returns media with the names of each genre
+def get_media_genre_names():
+    return """SELECT media.id, 
+                    media.name, 
+                    type.name AS type,
+                    genre.name AS genre, 
+                    genre2.name AS genre2, 
+                    genre3.name AS genre3,
+                    media.date_released, 
+                    media.full_average, 
+                    media.total_reviews
+            FROM media
+            JOIN type ON media.type = type.id
+            LEFT JOIN genre AS genre ON media.genre = genre.id
+            LEFT JOIN genre AS genre2 ON media.genre2 = genre2.id
+            LEFT JOIN genre AS genre3 ON media.genre3 = genre3.id
+            WHERE media.id = %s
+        """
 
 #Returns a summary of account (for anouther persons accout)
 def get_account_summary():
@@ -254,4 +272,27 @@ def get_account_recent():
     )
     ORDER BY r.date_reviewed DESC  
     LIMIT 20;
+    """
+
+# Returns movie objects the meet the criteria requested by the user
+def search_movies_by_attributes():
+    return """
+        SELECT media.id, media.name, type.name AS type,
+            COALESCE(genre.name, '') || 
+            CASE WHEN genre2.name IS NOT NULL THEN ', ' || genre2.name ELSE '' END ||
+            CASE WHEN genre3.name IS NOT NULL THEN ', ' || genre3.name ELSE '' END AS genres,
+            media.date_released
+        FROM media
+        JOIN type ON media.type = type.id
+        LEFT JOIN genre ON media.genre = genre.id
+        LEFT JOIN genre AS genre2 ON media.genre2 = genre2.id
+        LEFT JOIN genre AS genre3 ON media.genre3 = genre3.id
+        WHERE 
+            LOWER(media.name) LIKE %s OR
+            LOWER(type.name) LIKE %s OR
+            LOWER(genre.name) LIKE %s OR
+            LOWER(genre2.name) LIKE %s OR
+            LOWER(genre3.name) LIKE %s OR
+            TO_CHAR(media.date_released, 'YYYY-MM-DD') LIKE %s
+        GROUP BY media.id, media.name, type.name, media.date_released, genre.name, genre2.name, genre3.name
     """
