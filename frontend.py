@@ -8,7 +8,7 @@ st.set_page_config(page_title="Movie System", page_icon="🎥")
 
 # Initialize session state for page navigation
 if "current_page" not in st.session_state:
-    st.session_state["current_page"] = "signup"
+    st.session_state["current_page"] = "welcome"
 
 if "selected_movie_id" not in st.session_state:
     st.session_state["selected_movie_id"] = None
@@ -28,28 +28,92 @@ conn = get_connection()
 cur = conn.cursor()
 
 
+# Welcome Page
+def welcome_page():
+    st.title("Welcome to Movie Recommendation System")
+    st.subheader("Please choose an option to continue:")
+    
+    # Buttons for Signup and Login
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Sign Up"):
+            st.session_state["current_page"] = "signup"
+    with col2:
+        if st.button("Login"):
+            st.session_state["current_page"] = "login"
+
+
 # Function to render the signup page
 def signup_page():
-    st.title("🎥 Movie System")
-    st.subheader("Signup Page")
+    st.title("📝 Sign Up")
+    
+    # Collect user input
+    name = st.text_input("Full Name")
+    username = st.text_input("Username")
+    email = st.text_input("Email")
+    phone = st.text_input("Phone Number")
+    password = st.text_input("Password", type="password")
+    
+    if st.button("Create Account"):
+        if not name or not username or not email or not phone or not password:
+            st.error("Please fill out all fields.")
+            return
+        
+        try:
+             # Attempt to insert into the database
+            cur.execute("INSERT INTO account (name, username, email, phone, password) VALUES (%s, %s, %s, %s, %s)", 
+            (name, username, email, phone, password))
+            conn.commit()
 
-    # Unique form key
-    with st.form(key="signup_form_unique"):
-        username = st.text_input("Username", placeholder="Enter your username")
-        email = st.text_input("Email", placeholder="Enter your email")
-        password = st.text_input("Password", type="password", placeholder="Enter your password")
-        confirm_password = st.text_input("Confirm Password", type="password", placeholder="Confirm your password")
-        submit_button = st.form_submit_button("Sign Up")
+            # Check if the operation was successful
+            if cur.rowcount > 0:
+                st.success("Account created successfully! Redirecting to login...")
+                st.session_state["current_page"] = "create_account"
+                st.rerun()
+            else:
+                st.error("Failed to create account. Please try again.")
+        
+        finally:
+            conn.close()
 
-    if submit_button:
-        if password != confirm_password:
-            st.error("Passwords do not match!")
-        elif not username or not email or not password:
-            st.error("All fields are required!")
+
+# Login verification function using attempt_login query
+def verify_login(username, password):
+    try:
+        cur.execute(sq.attempt_login(), (username, password))
+        row = cur.fetchone()
+        cur.close()
+        conn.close()
+        return row is not None
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+        return False
+
+# Streamlit Login Page
+def login_page():
+    st.title("Login Page")
+
+    if st.button("⬅️ Back to Welcome Page"):
+        st.session_state["current_page"] = "welcome"
+
+    # User Input Fields
+    username = st.text_input("Username", key="login_username")
+    password = st.text_input("Password", type="password", key="login_password")
+    login_button = st.button("Login")
+
+    # Login Button Logic
+    if login_button:
+        if username and password:
+            if verify_login(username, password):
+                st.success("Login successful! Redirecting to homepage...")
+                # Redirect to homepage
+                st.session_state["current_page"] = "homepage"
+            else:
+                st.error("Invalid username or password. Please try again.")
         else:
-            st.session_state["username"] = username
-            st.session_state["email"] = email
-            st.session_state["current_page"] = "create_account"
+            st.warning("Please enter both username and password.")
+
+
 
 # Function to render the create account page
 def create_account_page():
@@ -328,14 +392,18 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # Navigation Block
-if "current_page" not in st.session_state:
-    st.session_state["current_page"] = "signup"  # Default page
+if st.session_state["current_page"] == "welcome":
+    welcome_page()
 
-if st.session_state["current_page"] == "signup":
+elif st.session_state["current_page"] == "login":
+    login_page()
+
+elif st.session_state["current_page"] == "signup":
     signup_page()
 
 elif st.session_state["current_page"] == "create_account":
     create_account_page()
+
 elif st.session_state["current_page"] == "homepage":
     homepage()
 
