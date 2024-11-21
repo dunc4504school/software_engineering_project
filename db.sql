@@ -14,6 +14,8 @@ CREATE TABLE media (
     id SERIAL,
     type INT,
     genre INT,
+    genre2 INT,
+    genre3 INT,
     date_released DATE,
     studio VARCHAR(100),
     producer VARCHAR(100),
