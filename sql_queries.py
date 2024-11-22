@@ -51,7 +51,7 @@ def add_following():
 def add_review():
     return """WITH new_review AS (
                 INSERT INTO review (account_id, media_id, rating, description, date_reviewed)
-                VALUES (%s, %s, %s, %s, CURRENT_DATE)
+                VALUES (%s, (SELECT id FROM media WHERE name = %s), %s, %s, CURRENT_DATE)
                 RETURNING account_id, media_id, rating
               ), update_account AS (
                 UPDATE account
@@ -271,7 +271,7 @@ def get_account_recent():
         WHERE account_id = %s
     )
     ORDER BY r.date_reviewed DESC  
-    LIMIT 20;
+    LIMIT 10;
     """
 
 # Returns movie objects the meet the criteria requested by the user
@@ -296,3 +296,32 @@ def search_movies_by_attributes():
             TO_CHAR(media.date_released, 'YYYY-MM-DD') LIKE %s
         GROUP BY media.id, media.name, type.name, media.date_released, genre.name, genre2.name, genre3.name
     """
+
+# Returns all accounts
+def get_all_accounts():
+    return """
+        SELECT *
+        FROM account;
+    """
+# Returns 5 most recently made reviews
+def get_recent_reviews():
+    return """
+            SELECT r.description, r.rating, r.date_reviewed, m.name
+            FROM review r
+            JOIN media m ON r.media_id = m.id
+            WHERE r.account_id = %s
+            ORDER BY r.date_reviewed desc
+            LIMIT 5;
+        """ 
+
+# Returns 5 most recent reviews for a specific movie
+def get_specific_reviews():
+    return """
+            SELECT r.description, r.rating, r.date_reviewed, a.username
+            FROM review r
+            JOIN account a ON r.account_id = a.id
+            WHERE r.media_id = %s
+            ORDER BY r.date_reviewed DESC
+            LIMIT 5;
+        """
+                
