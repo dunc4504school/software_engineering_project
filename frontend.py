@@ -18,7 +18,7 @@ if "selected_movie_id" not in st.session_state:
 def get_connection():
     return psycopg2.connect(
         host="localhost",       # Your database host
-        database="cp317_final",    # Your database name
+        database="cp317_final2",    # Your database name
         user="heslip",       # Your database username
         password="pass123" # Your database password
     )
@@ -31,10 +31,10 @@ cur = conn.cursor()
 # Welcome Page
 def welcome_page():
     # Centered image using st.image
-    st.image("logo.jpg", caption=None, width=1200, use_container_width=False)
+    st.image("logo2.jpg", caption=None, width=600, use_container_width=False)
 
     # Buttons for Signup and Login
-    col1, col2, col3 = st.columns([1, 1, 1])  # Outer columns create spacing
+    col1, col2, col3 = st.columns([1, 1, 2])  # Outer columns create spacing
     with col2:  # Center column for buttons
         signup = st.button("Sign Up", key="signup")
     with col3:
@@ -148,6 +148,7 @@ def create_account_page():
 
 # Function to render the homepage
 def homepage():
+    account_id = st.session_state.get("user_id")
     # Add a title with an icon
     st.markdown("""
     <div style="text-align: center;">
@@ -184,6 +185,8 @@ def homepage():
             st.session_state["current_page"] = "social"
         if st.button("🔍 Search", help="Search our library for movies and TV shows."):
             st.session_state["current_page"] = "search"
+
+    get_movie_recommendations(account_id)
 
 def reviews_page():
     # Ensure account_id is retrieved from session state
@@ -222,7 +225,7 @@ def reviews_page():
                 # Insert the review into the database
                 conn = get_connection()
                 cur = conn.cursor()
-                sql = sq.add_review()
+                sql = sq.add_review_frontend()
                 cur.execute(sql, (account_id, selected_movie_name, rating, review_text))
                 conn.commit()
                 cur.close()
@@ -335,6 +338,16 @@ def account_page():
 def social_page():
     if st.button("⬅️ Back to Homepage"):
         st.session_state["current_page"] = "homepage"
+
+    # Check navigation state
+    if st.session_state.get("view_profile", False):
+        # If viewing a profile, call view_profile_page
+        user_id = st.session_state.get("selected_user_id")
+        if st.button("⬅️ Back to Social Page"):
+            st.session_state["view_profile"] = False
+            st.rerun()
+        view_profile_page(user_id)
+        return
 
     st.title("🤝 Social Page")
     st.subheader("Stay Connected and Discover Movies")
@@ -463,6 +476,21 @@ def social_page():
         else:
             st.write("No recent activities from your connections.")
 
+        # Add View Profile Navigation
+        st.markdown("### View a Friend's Profile")
+        selected_friend = st.selectbox(
+            "Select a friend to view their profile:",
+            options=[""] + [f[1] for f in following],  # Extract usernames from `following`
+            format_func=lambda x: "Select a friend..." if x == "" else x,
+        )
+        if st.button("View Profile"):
+            # Set navigation state and selected user ID
+            for f in following:
+                if f[1] == selected_friend:
+                    st.session_state["view_profile"] = True
+                    st.session_state["selected_user_id"] = f[0]
+                    st.rerun()
+
         # Recommendations
         st.markdown("### Personalized Recommendations")
         if activities:
@@ -479,12 +507,60 @@ def social_page():
         conn.close()
 
 
+def view_profile_page(user_id):
+    st.title("👤 View User Profile")
+
+    # Fetch and display profile details
+    try:
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute(sq.get_account_summary(), (user_id,))
+        profile = cur.fetchone()
+
+        if profile:
+            user_id, name, username, total_reviews, total_followers, total_following, avg_rating = profile
+
+            # Display profile information
+            st.markdown(f"### **{name}**")
+            st.markdown(f"- **Username:** {username}")
+            st.markdown(f"- **Total Reviews:** {total_reviews}")
+            st.markdown(f"- **Followers:** {total_followers}")
+            st.markdown(f"- **Following:** {total_following}")
+            st.markdown(f"- **Average Rating:** {avg_rating:.1f}" if avg_rating else "- **Average Rating:** N/A")
+
+            # Fetch and display reviews
+            cur.execute(sq.get_account_review(), (user_id,))
+            reviews = cur.fetchall()
+
+            if reviews:
+                st.markdown("### Reviews:")
+                for review in reviews:
+                    movie_name, rating, diff, description, genre_name, type_name = review
+                    st.markdown(f"- 🎬 **{movie_name}** ({genre_name}, {type_name}) - Rated: {rating}/10")
+                    st.markdown(f"  _Review: {description}_")
+            else:
+                st.info("No reviews found.")
+        else:
+            st.error("User not found.")
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+    finally:
+        cur.close()
+        conn.close()
+
+
 def search_page():
     st.title("🔍 Search for Movies")
 
     if st.button("Back to Homepage"):
         st.session_state["current_page"] = "homepage"
         st.rerun()
+
+    account_id =  st.session_state.get("user_id")
+    if account_id is None:
+        st.warning("You need to log in to access the account page.")
+        return
     
     # Search bar
     query = st.text_input("Search Movies:")
@@ -518,25 +594,7 @@ def search_page():
                     st.rerun()
 
     # Global Recommendations Section
-    st.subheader("🌍 Global Recommendations")
-    # Placeholder for global recommendations (e.g., most popular movies globally)
-    st.markdown("""
-    <div style="
-        background: #f1f1f1;
-        border-radius: 10px;
-        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-        margin-bottom: 20px;
-        padding: 20px;
-    ">
-        <h4 style='color: #333;'>Here are some movies recommended globally:</h4>
-        <ul>
-            <li><b>Movie 1</b> - Genre: Action, Rating: 9.0/10</li>
-            <li><b>Movie 2</b> - Genre: Drama, Rating: 8.7/10</li>
-            <li><b>Movie 3</b> - Genre: Comedy, Rating: 8.5/10</li>
-            <li><b>Movie 4</b> - Genre: Thriller, Rating: 8.3/10</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
+    get_movie_recommendations(account_id)
 
     # Friends' Recommendations Section
     st.subheader("👫 Friends' Recommendations")
@@ -596,6 +654,8 @@ def movie_profile_page():
         st.write(f"📅 **Release Date**: {movie['Release']}")
         st.write(f"⭐ **Average Rating**: {movie['Average Rating']:.1f}")
         st.write(f"👥 **Total Reviews**: {movie['Total Reviews']}")
+        st.write(f"🎬 **Studio**: {movie['Studio']}")
+        st.write(f"🎞️ **Producer**: {movie['Producer']}")
 
         # Write a Review Button
         if st.button("✍️ Write a Review"):
@@ -652,6 +712,8 @@ def get_movie_details(movie_id):
             release_date = pd.to_datetime(result[6]).strftime('%B %d, %Y')
             avg_rating = result[7]  # Average Rating
             total_reviews = result[8]  # Total Reviews
+            studio = result[9]
+            producer = result[10]
             
             return {
                 "ID": movie,
@@ -660,12 +722,132 @@ def get_movie_details(movie_id):
                 "Genres": movie_genres,
                 "Release": release_date,
                 "Average Rating": avg_rating,
-                "Total Reviews": total_reviews
+                "Total Reviews": total_reviews,
+                "Studio": studio,
+                "Producer": producer
             }
         return None
     except Exception as e:
         st.error(f"Error fetching movie details: {e}")
         return None
+
+
+import streamlit as st
+
+def get_movie_recommendations(user_id):
+    try:
+        # SQL Query to get 5 movie recommendations based on user preferences
+        recommendation_query = """
+        SELECT DISTINCT 
+            m.id, 
+            m.name, 
+            g.name AS genre1, 
+            g2.name AS genre2, 
+            g3.name AS genre3, 
+            t.name AS type_name, 
+            m.full_average, 
+            m.date_released
+        FROM media m
+        LEFT JOIN genre g ON m.genre = g.id
+        LEFT JOIN genre g2 ON m.genre2 = g2.id
+        LEFT JOIN genre g3 ON m.genre3 = g3.id
+        JOIN type t ON m.type = t.id
+        WHERE (
+            m.genre IN (
+                SELECT m.genre FROM review r
+                JOIN media m ON r.media_id = m.id
+                WHERE r.account_id = %s
+                GROUP BY m.genre
+                ORDER BY AVG(r.rating) DESC
+                LIMIT 3
+            )
+            OR m.genre2 IN (
+                SELECT m.genre2 FROM review r
+                JOIN media m ON r.media_id = m.id
+                WHERE r.account_id = %s
+                GROUP BY m.genre2
+                ORDER BY AVG(r.rating) DESC
+                LIMIT 3
+            )
+            OR m.genre3 IN (
+                SELECT m.genre3 FROM review r
+                JOIN media m ON r.media_id = m.id
+                WHERE r.account_id = %s
+                GROUP BY m.genre3
+                ORDER BY AVG(r.rating) DESC
+                LIMIT 3
+            )
+        )
+        AND m.id NOT IN (
+            SELECT media_id FROM review WHERE account_id = %s
+        )
+        ORDER BY m.full_average DESC, m.date_released DESC
+        LIMIT 5;
+        """
+
+        # Execute the query
+        cur.execute(recommendation_query, (user_id, user_id, user_id, user_id))
+        recommendations = cur.fetchall()
+
+        # Display the recommendations horizontally
+        st.markdown("""
+            <div style="
+                background: #f1f1f1;
+                border-radius: 10px;
+                box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+                margin-bottom: 20px;
+                padding: 20px;
+            ">
+                <h4 style='color: #333;'>Here are some movies recommended globally:</h4>
+            </div>
+        """, unsafe_allow_html=True)
+
+        if recommendations:
+            # Create columns for displaying movies horizontally
+            columns = st.columns(5)  # Create 5 columns for 5 movies
+
+            for idx, movie in enumerate(recommendations):
+                movie_id, movie_name, genre1, genre2, genre3, type_name, full_average, date_released = movie
+                genres = ", ".join([g for g in [genre1, genre2, genre3] if g])
+
+                # Display each movie in the corresponding column
+                with columns[idx]:
+                    st.markdown(f"""
+                        <div style="
+                            background: white;
+                            border-radius: 10px;
+                            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.05);
+                            margin-bottom: 15px;
+                            padding: 15px;
+                        ">
+                            <h5 style='color: #222;'>{movie_name}</h5>
+                            <p style='color: #555;'>🎭 Genres: {genres}</p>
+                            <p style='color: #555;'>📺 Type: {type_name}</p>
+                            <p style='color: #555;'>⭐ Average Rating: {full_average:.2f}</p>
+                            <p style='color: #555;'>📅 Released: {date_released.strftime('%Y-%m-%d')}</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+                <div style="
+                    background: white;
+                    border-radius: 10px;
+                    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.05);
+                    padding: 15px;
+                ">
+                    <p style='color: #555;'>No recommendations available at the moment.</p>
+                </div>
+            """, unsafe_allow_html=True)
+
+    except Exception as e:
+        st.error(f"An error occurred while fetching recommendations: {e}")
+    finally:
+        if 'cur' in locals():
+            cur.close()
+        if 'conn' in locals():
+            conn.close()
+
+
 
 
 # Add custom CSS for background and buttons
