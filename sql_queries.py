@@ -48,7 +48,7 @@ def add_following():
 
 
 #Adds a Review:
-def add_review():
+def add_review_frontend():
     return """WITH new_review AS (
                 INSERT INTO review (account_id, media_id, rating, description, date_reviewed)
                 VALUES (%s, (SELECT id FROM media WHERE name = %s), %s, %s, CURRENT_DATE)
@@ -66,6 +66,29 @@ def add_review():
                 / (total_reviews + 1)
             )
             WHERE id = (SELECT media_id FROM new_review);"""
+
+def add_review_backend():
+    return """
+        WITH new_review AS (
+            INSERT INTO review (account_id, media_id, rating, description, date_reviewed)
+            VALUES (%s, %s, %s, %s, CURRENT_DATE)
+            RETURNING account_id, media_id, rating
+        ), update_account AS (
+            UPDATE account
+            SET total_reviews = total_reviews + 1
+            WHERE id = (SELECT account_id FROM new_review)
+            RETURNING id
+        )
+        UPDATE media
+        SET total_reviews = total_reviews + 1,
+        full_average = (
+            (full_average * total_reviews + (SELECT rating FROM new_review)) 
+            / (total_reviews + 1)
+        )
+        WHERE id = (SELECT media_id FROM new_review);
+    """
+
+
 
 #----------------------------------------------------------------------------------------
 
@@ -162,7 +185,9 @@ def get_media_genre_names():
                     genre3.name AS genre3,
                     media.date_released, 
                     media.full_average, 
-                    media.total_reviews
+                    media.total_reviews,
+                    media.studio,
+                    media.producer
             FROM media
             JOIN type ON media.type = type.id
             LEFT JOIN genre AS genre ON media.genre = genre.id
@@ -210,23 +235,20 @@ def attempt_login():
 def get_account_review():
     return """
         SELECT m.name,
-       r.rating, 
-       r.rating - m.full_average,
-       r.description, 
-       g.name AS genre_name,  
-       g2.name As genre2_name,
-       g3.name As genre3_name,
-       t.name AS type_name    
+            r.rating, 
+            r.rating - m.full_average,
+            r.description, 
+            CONCAT_WS(', ', g.name, g2.name, g3.name) AS genres,  
+            t.name AS type_name    
         FROM review r
         JOIN media m ON r.media_id = m.id
-        LEFT JOIN review orr ON orr.media_id = r.media_id
         LEFT JOIN genre g ON m.genre = g.id
         LEFT JOIN genre g2 ON m.genre2 = g2.id
         LEFT JOIN genre g3 ON m.genre3 = g3.id   
         LEFT JOIN type t ON m.type = t.id    
         WHERE r.account_id = %s
         GROUP BY r.media_id, r.rating, r.description, m.name, m.full_average, g.name, g2.name, g3.name, t.name;
-    """
+        """
 
 #Returns the list of account that follow this account
 def get_account_follows():
