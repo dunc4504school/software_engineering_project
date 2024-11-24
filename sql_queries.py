@@ -1,11 +1,11 @@
 
 #Adds A Type: (Movie, Tv-Show)
 def add_type():
-    return """INSERT INTO type (name) VALUES (%s)"""
+    return """INSERT INTO type (name) VALUES (%s) returning id"""
 
 #Adds A Genre: (Documentary, Action, Mystery)
 def add_genre():
-    return """INSERT INTO genre (name) VALUES (%s)"""
+    return """INSERT INTO genre (name) VALUES (%s) returning id"""
 
 #Adds Media
 def add_media():
@@ -15,9 +15,10 @@ def add_media():
                                  genre3,
                                  date_released,
                                  studio,
-                                 producer,
-                                 name) 
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
+                                 name,
+                                 full_average,
+                                 total_reviews) 
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
 
 #Adds Account
 def add_account():
@@ -345,5 +346,16 @@ def get_specific_reviews():
             WHERE r.media_id = %s
             ORDER BY r.date_reviewed DESC
             LIMIT 5;
+        """
+
+
+def delete_all():
+        return """
+            DELETE from following;
+            DELETE from review;
+            DELETE from account;
+            DELETE from media;
+            DELETE from type;
+            DELETE from genre;
         """
                 

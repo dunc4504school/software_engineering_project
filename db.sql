@@ -19,7 +19,7 @@ CREATE TABLE media (
     date_released DATE,
     studio VARCHAR(100),
     producer VARCHAR(100),
-    name VARCHAR(50),
+    name VARCHAR(150),
     full_average REAL DEFAULT 0,
     total_reviews INT DEFAULT 0,
 
