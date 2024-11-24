@@ -9,7 +9,8 @@ def add_genre():
 
 #Adds Media
 def add_media():
-    return """INSERT INTO media(type,
+    return """INSERT INTO media(id,
+                                type,
                                  genre,
                                  genre2,
                                  genre3,
@@ -18,7 +19,8 @@ def add_media():
                                  name,
                                  full_average,
                                  total_reviews) 
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+               ON CONFLICT (id) DO NOTHING;"""
 
 #Adds Account
 def add_account():
@@ -48,7 +50,6 @@ def add_following():
              WHERE id = (SELECT follows_id FROM new_follow);"""
 
 
-#Adds a Review:
 def add_review_frontend():
     return """WITH new_review AS (
                 INSERT INTO review (account_id, media_id, rating, description, date_reviewed)
@@ -56,7 +57,37 @@ def add_review_frontend():
                 RETURNING account_id, media_id, rating
               ), update_account AS (
                 UPDATE account
-                SET total_reviews = total_reviews + 1
+                SET average_review = (
+                    (average_review * total_reviews + (SELECT rating FROM new_review)) / (total_reviews + 1)
+                ),
+                average_expected = (
+                    (average_expected * total_reviews + (SELECT full_average FROM media WHERE id = (SELECT media_id FROM new_review))) / (total_reviews + 1)
+                ),
+                total_reviews = total_reviews + 1
+                WHERE id = (SELECT account_id FROM new_review)
+                RETURNING id
+            )
+            UPDATE media
+            SET total_reviews = total_reviews + 1,
+            full_average = (
+                (full_average * total_reviews + (SELECT rating FROM new_review)) 
+                / (total_reviews + 1)
+            )
+            WHERE id = (SELECT media_id FROM new_review);"""
+def add_review_backend():
+    return """WITH new_review AS (
+                INSERT INTO review (account_id, media_id, rating, description, date_reviewed)
+                VALUES (%s, %s, %s, %s, CURRENT_DATE)
+                RETURNING account_id, media_id, rating
+              ), update_account AS (
+                UPDATE account
+                SET average_review = (
+                    (average_review * total_reviews + (SELECT rating FROM new_review)) / (total_reviews + 1)
+                ),
+                average_expected = (
+                    (average_expected * total_reviews + (SELECT full_average FROM media WHERE id = (SELECT media_id FROM new_review))) / (total_reviews + 1)
+                ),
+                total_reviews = total_reviews + 1
                 WHERE id = (SELECT account_id FROM new_review)
                 RETURNING id
             )
@@ -68,26 +99,7 @@ def add_review_frontend():
             )
             WHERE id = (SELECT media_id FROM new_review);"""
 
-def add_review_backend():
-    return """
-        WITH new_review AS (
-            INSERT INTO review (account_id, media_id, rating, description, date_reviewed)
-            VALUES (%s, %s, %s, %s, CURRENT_DATE)
-            RETURNING account_id, media_id, rating
-        ), update_account AS (
-            UPDATE account
-            SET total_reviews = total_reviews + 1
-            WHERE id = (SELECT account_id FROM new_review)
-            RETURNING id
-        )
-        UPDATE media
-        SET total_reviews = total_reviews + 1,
-        full_average = (
-            (full_average * total_reviews + (SELECT rating FROM new_review)) 
-            / (total_reviews + 1)
-        )
-        WHERE id = (SELECT media_id FROM new_review);
-    """
+
 
 
 

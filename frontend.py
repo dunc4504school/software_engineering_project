@@ -18,9 +18,9 @@ if "selected_movie_id" not in st.session_state:
 def get_connection():
     return psycopg2.connect(
         host="localhost",       # Your database host
-        database="cp317_final2",    # Your database name
-        user="heslip",       # Your database username
-        password="pass123" # Your database password
+        database="cp317_db",    # Your database name
+        user="postgres",       # Your database username
+        password="password" # Your database password
     )
 
 # Create connection and cursor for DB
@@ -732,7 +732,7 @@ def get_movie_details(movie_id):
         return None
 
 
-import streamlit as st
+
 
 def get_movie_recommendations(user_id):
     try:

@@ -12,7 +12,7 @@ import unicodedata
 #Run: "CREATE DATABASE cp317_final"
 #Run "\c cp317_final"
 #Paste db.sql into terminal
-#Run "SET CLIENT_ENCODING TO 'UTF8';"
+#Run "SET CLIENT_ENCODING TO 'UTF8';"    #READ THIS!!!!!!!!!!!!!!!!!!!
 
 conn = psycopg2.connect(
     host="localhost",
@@ -88,7 +88,6 @@ def add_media(path):
     data = data.where(pd.notnull(data), None)
     data.replace("nan", None, inplace=True)
 
-    serial = 1
 
     for _, row in data.iterrows():
         genre_ids, genre_names = setup_genres(row)
@@ -98,8 +97,10 @@ def add_media(path):
         studios = eval(row['production_companies']) if row['production_companies'] != "[]" else []  # Safely handle empty studios
         if studios: first_studio_name = studios[0]['name']
 
+    
         # Insert into the media table
         cur.execute(sq.add_media(), (
+                    row['id'],
                     type_id,
                     genre_ids[0],  
                     genre_ids[1],
@@ -110,11 +111,86 @@ def add_media(path):
                     row['vote_average'],
                     row['vote_count']
         ))
-                
-        print("Row " + str(serial) + " inserted.")
-        serial +=1
+        conn.commit()
+            
+
+        
+
+def add_testing():
+
+    testing_users = [
+    ('Venkat Gunturi', 'Venn123'),
+    ('Gavin Heslip', 'Chislm'),
+    ('Hashim Jama', 'HJ1324'),
+    ('Zach Reid', 'BigTarra432_x'),
+    ('Lucas Duncan', 'PenUlty'),
+    ('Emily Carter', 'EmC123'),
+    ('Michael Nguyen', 'MikeN77'),
+    ('Sophia Patel', 'Sophie_P_21'),
+    ('Liam Brown', 'LiamBr_009'),
+    ('Olivia Smith', 'LivS2022'),
+    ('Noah Wilson', 'NoahWils90'),
+    ('Ava Johnson', 'AvaJ98x'),
+    ('Ethan Martinez', 'E_Martz_56'),
+    ('Mia Hernandez', 'MiaH45'),
+    ('Jacob Lee', 'JakeL_1234'),
+    ('Isabella Garcia', 'IzzyG88'),
+    ('William Anderson', 'WillA_22'),
+    ('Charlotte Moore', 'CharM007'),
+    ('James Thomas', 'JT99Rocks'),
+    ('Amelia Hall', 'AmyH_91'),
+    ('Benjamin Young', 'BenjiY19'),
+    ('Emma Scott', 'EmmaS23'),
+    ('Alexander Adams', 'AlexAdams_88'),
+    ('Ella Baker', 'EllaB07'),
+    ('Henry Walker', 'HWalker'),
+    ('Grace Lewis', 'GraceL98'),
+    ('Lucas Ramirez', 'LucaRam12'),
+    ('Mason Clark', 'MClarkX'),
+    ('Lily Turner', 'LilyT567'),
+    ('Elijah Rivera', 'EliR2020'),
+    ('Abigail Torres', 'AbbyT'),
+    ('Oliver Bennett', 'OBennett77'),
+    ('Chloe Stewart', 'ChloeS32'),
+    ('Logan Foster', 'LoganF_22'),
+    ('Sophia Hughes', 'SophH99'),
+    ('Jackson Perry', 'JackP88'),
+    ('Harper Price', 'HPrice42'),
+    ('Gabriel Morales', 'GabeMor123')]
+    account_ids = []
+    for account in testing_users:
+        cur.execute(sq.add_account(), (account[0],account[1],'TEST', 'TEST', 'TEST'))
+        cur.execute(sq.get_matching_account(), (account[1],))
+        account_ids.append(cur.fetchone())
+    conn.commit()
+
+    #Creating Followings
+    for account_id in account_ids:
+        follow_count = random.randint(1, len(account_ids) - 1)
+        account_ids_to_follow = random.sample(account_ids, follow_count)
+        for follower_id in account_ids_to_follow:
+            if follower_id == account_id: continue
+            cur.execute(sq.add_following(), (account_id, follower_id))
+    conn.commit()  
+
+    #Sample Media
+    cur.execute(sq.get_random_media(100))
+    media_ids = cur.fetchall()
+
+    #Creating Reviews
+    for media_id in media_ids:
+        review_count = random.randint(1, len(account_ids)-1)
+        account_ids_to_review = random.sample(account_ids, review_count)
+
+        for account_id_to_review in account_ids_to_review:
+            rating = random.randint(1, 10)
+            cur.execute(sq.add_review_backend(), (account_id_to_review, media_id, rating, 'TESTING',))
         conn.commit()
 
 
 path = "movies_data.zip"
 add_media(path)
+
+#ADD REVIEWS HERE
+
+add_testing()

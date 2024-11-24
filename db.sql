@@ -38,6 +38,8 @@ CREATE TABLE account (
     phone VARCHAR(10),
     password VARCHAR(30),
     total_reviews INT DEFAULT 0,
+    average_review REAL DEFAULT 0,
+    average_expected REAL DEFAULT 0,
     total_followers INT DEFAULT 0,
     total_following INT DEFAULT 0,
     primary key (id)
