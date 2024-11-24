@@ -4,12 +4,15 @@ import random
 import sql_queries as sq
 import pandas as pd
 import unicodedata
+
+
 #Enter Command Line
 #Run: "psql -U postgres"
 #Enter your password
 #Run: "CREATE DATABASE cp317_final"
 #Run "\c cp317_final"
 #Paste db.sql into terminal
+#Run "SET CLIENT_ENCODING TO 'UTF8';"
 
 conn = psycopg2.connect(
     host="localhost",
