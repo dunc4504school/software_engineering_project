@@ -25,17 +25,7 @@ cur = conn.cursor()
 
 cur.execute(sq.delete_all())
 
-path = "movies_data.zip"
 
-#Obtain Data
-data = pd.read_csv(path, compression="zip")
-
-#Cleaning Data
-data['title'] = data['title'].fillna(data['original_title'])
-data = data.where(pd.notnull(data), None)
-data.replace("nan", None, inplace=True)
-    
-serial = 0
 
 def setup_genres(row):
 
@@ -88,10 +78,19 @@ def setup_types(type):
 
     return type_id
 
-try:
-    
-    for _, row in data.iterrows():
+def add_media(path):
 
+    #Obtain Data
+    data = pd.read_csv(path, compression="zip")
+
+    #Cleaning Data
+    data['title'] = data['title'].fillna(data['original_title'])
+    data = data.where(pd.notnull(data), None)
+    data.replace("nan", None, inplace=True)
+
+    serial = 1
+
+    for _, row in data.iterrows():
         genre_ids, genre_names = setup_genres(row)
 
         type_id = setup_types(genre_names[0])
@@ -115,9 +114,7 @@ try:
         print("Row " + str(serial) + " inserted.")
         serial +=1
         conn.commit()
-except Exception as e:
-    conn.rollback()
-    print("Error inserting data:", e)
-    print("Problematic row: ")
-    raise
 
+
+path = "movies_data.zip"
+add_media(path)
