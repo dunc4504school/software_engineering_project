@@ -134,7 +134,7 @@ def get_genre():
 
 #Returns {limit} number random media
 def get_random_media(limit):
-    return f""" SELECT id from media ORDER BY RANDOM() LIMIT {limit}"""
+    return f""" SELECT id from media ORDER BY total_reviews DESC LIMIT {limit}"""
 
 #Returns Account Id Given Username
 def get_matching_account():
@@ -370,4 +370,35 @@ def delete_all():
             DELETE from type;
             DELETE from genre;
         """
-                
+
+
+def reccomendations():
+    return """WITH FollowedReviews AS (
+    SELECT 
+        r.media_id,
+        AVG(r.rating) AS avg_rating_from_followed
+    FROM 
+        following f
+    JOIN 
+        review r ON f.follows_id = r.account_id
+    WHERE 
+        f.account_id = %s
+    GROUP BY 
+        r.media_id
+)
+SELECT 
+    m.id,
+    m.name AS media_name,
+    m.full_average,
+    COALESCE(fr.avg_rating_from_followed, 0) AS avg_rating_from_followed,
+    (POWER(m.full_average, 1.2) + POWER(COALESCE(fr.avg_rating_from_followed, 0),1.2)) AS total_score
+FROM 
+    media m
+LEFT JOIN 
+    FollowedReviews fr ON m.id = fr.media_id
+WHERE 
+    m.type = %s 
+    AND (m.genre = %s OR m.genre2 = %s OR m.genre3 = %s) 
+    AND avg_rating_from_followed > 0
+ORDER BY 
+    total_score DESC; """                
