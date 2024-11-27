@@ -4,6 +4,7 @@ import random
 import sql_queries as sq
 import pandas as pd
 import unicodedata
+from datetime import datetime, date
 
 
 #Enter Command Line
@@ -26,6 +27,15 @@ cur = conn.cursor()
 cur.execute(sq.delete_all())
 
 
+first_names = [
+    "James", "Mary", "John", "Patricia", "Robert", "Jennifer", "Michael", "Linda", 
+    "William", "Elizabeth", "David", "Barbara", "Richard", "Susan", "Joseph", "Jessica", 
+    "Thomas", "Sarah", "Charles", "Karen", "Nelly", "Bobby", "Tyrone", "Lashanda"]
+
+last_names = [
+    "Smith", "Johnson", "Williams", "Jones", "Brown", "Davis", "Miller", "Wilson", 
+    "Moore", "Taylor", "Anderson", "Thomas", "Jackson", "White", "Harris", "Martin", 
+    "Thompson", "Garcia", "Martinez", "Robinson", "Bobby", "McGorden", "Black", "Kappor"]
 
 def setup_genres(row):
 
@@ -78,6 +88,18 @@ def setup_types(type):
 
     return type_id
 
+def setup_accounts(accounts):
+
+    for row in accounts.itertuples():
+        fname = random.choice(first_names)
+        lname = random.choice(last_names)
+        user = f"{fname[0]}{lname}{random.randint(100, 999)}"
+        date = datetime.fromtimestamp(row.timestamp).date()
+        
+        cur.execute(sq.add_account_backend(), 
+                    (f"{fname} {lname}", row.userId, user, date, "TEST", "TEST", "TEST"))
+    conn.commit()
+
 def add_media(path):
 
     #Obtain Data
@@ -113,8 +135,25 @@ def add_media(path):
         ))
         conn.commit()
             
+def add_review(path):
 
-        
+    data = pd.read_csv(path, compression="zip")
+    data = data.dropna()
+
+    data['userId'] = data['userId'].astype(int)
+    data['movieId'] = data['movieId'].astype(int)
+
+
+    accounts = data.groupby('userId')['timestamp'].min().reset_index()
+    setup_accounts(accounts)
+
+
+
+    for row in data.itertuples():
+        date = datetime.fromtimestamp(row.timestamp).date()
+        cur.execute(sq.add_review_backend(), 
+                    (row.userId, row.movieId, row.rating, "TESTING", date, row.movieId, row.userId))
+    conn.commit()
 
 def add_testing():
 
@@ -184,14 +223,17 @@ def add_testing():
 
         for account_id_to_review in account_ids_to_review:
             rating = random.randint(1, 10)
-            cur.execute(sq.add_review_backend(), (account_id_to_review, media_id, rating, 'TESTING',))
+            cur.execute(sq.add_review_backend(), (account_id_to_review, media_id, rating, 'TESTING', date.today(), media_id,account_id_to_review))
         conn.commit()
 
 
 path = "movies_data.zip"
 add_media(path)
 
-#ADD REVIEWS HERE
+path2 = "ratings_small.zip"
+add_review(path2)
 
+
+#Randomized Personal (No Connection To Other)
 add_testing()
 

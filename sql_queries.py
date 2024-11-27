@@ -22,6 +22,18 @@ def add_media():
                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                ON CONFLICT (id) DO NOTHING;"""
 
+def add_account_backend():
+    return """INSERT INTO account(
+                                  name, 
+                                  id,
+                                  username,
+                                  date_created,
+                                  email,
+                                  phone,
+                                  password)
+              VALUES(%s, %s, %s, %s, %s, %s, %s)
+              ON CONFLICT (username) DO NOTHING"""
+
 #Adds Account
 def add_account():
     return """INSERT INTO account(name, 
@@ -74,30 +86,116 @@ def add_review_frontend():
                 / (total_reviews + 1)
             )
             WHERE id = (SELECT media_id FROM new_review);"""
+
+
 def add_review_backend():
     return """WITH new_review AS (
-                INSERT INTO review (account_id, media_id, rating, description, date_reviewed)
-                VALUES (%s, %s, %s, %s, CURRENT_DATE)
-                RETURNING account_id, media_id, rating
-              ), update_account AS (
-                UPDATE account
-                SET average_review = (
-                    (average_review * total_reviews + (SELECT rating FROM new_review)) / (total_reviews + 1)
-                ),
-                average_expected = (
-                    (average_expected * total_reviews + (SELECT full_average FROM media WHERE id = (SELECT media_id FROM new_review))) / (total_reviews + 1)
-                ),
-                total_reviews = total_reviews + 1
-                WHERE id = (SELECT account_id FROM new_review)
-                RETURNING id
-            )
-            UPDATE media
-            SET total_reviews = total_reviews + 1,
-            full_average = (
-                (full_average * total_reviews + (SELECT rating FROM new_review)) 
-                / (total_reviews + 1)
-            )
-            WHERE id = (SELECT media_id FROM new_review);"""
+  INSERT INTO review (account_id, media_id, rating, description, date_reviewed)
+  SELECT %s, %s, %s, %s, %s
+  WHERE EXISTS (SELECT 1 FROM media WHERE id = %s)  -- Ensure media_id exists in media table
+  AND EXISTS (SELECT 1 FROM account WHERE id = %s)  -- Ensure account_id exists in account table
+  RETURNING account_id, media_id, rating
+), update_account AS (
+  UPDATE account
+  SET average_review = (
+      (average_review * total_reviews + (SELECT rating FROM new_review)) / (total_reviews + 1)
+  ),
+  average_expected = (
+      (average_expected * total_reviews + (SELECT full_average FROM media WHERE id = (SELECT media_id FROM new_review))) / (total_reviews + 1)
+  ),
+  total_reviews = total_reviews + 1
+  WHERE id = (SELECT account_id FROM new_review)
+  RETURNING id
+)
+UPDATE media
+SET total_reviews = total_reviews + 1,
+    full_average = (
+        (full_average * total_reviews + (SELECT rating FROM new_review)) 
+        / (total_reviews + 1)
+    )
+WHERE id = (SELECT media_id FROM new_review);
+   """
+#     return """WITH new_review AS (
+#   INSERT INTO review (account_id, media_id, rating, description, date_reviewed)
+#   SELECT %s, %s, %s, %s, %s
+#   WHERE EXISTS (SELECT 1 FROM media WHERE id = %s)  -- Only insert if media_id exists in media
+#   RETURNING account_id, media_id, rating
+# ), update_account AS (
+#   UPDATE account
+#   SET average_review = (
+#       (average_review * total_reviews + (SELECT rating FROM new_review)) / (total_reviews + 1)
+#   ),
+#   average_expected = (
+#       (average_expected * total_reviews + (SELECT full_average FROM media WHERE id = (SELECT media_id FROM new_review))) / (total_reviews + 1)
+#   ),
+#   total_reviews = total_reviews + 1
+#   WHERE id = (SELECT account_id FROM new_review)
+#   RETURNING id
+# )
+# UPDATE media
+# SET total_reviews = total_reviews + 1,
+#     full_average = (
+#         (full_average * total_reviews + (SELECT rating FROM new_review)) 
+#         / (total_reviews + 1)
+#     )
+# WHERE id = (SELECT media_id FROM new_review);
+
+    
+    
+#     """
+    
+    
+    
+#     """ WITH new_review AS (
+#   INSERT INTO review (account_id, media_id, rating, description, date_reviewed)
+#   VALUES (%s, %s, %s, %s, %s)
+#   ON CONFLICT (media_id) DO NOTHING 
+#   RETURNING account_id, media_id, rating
+# ), update_account AS (
+#   UPDATE account
+#   SET average_review = (
+#       (average_review * total_reviews + (SELECT rating FROM new_review)) / (total_reviews + 1)
+#   ),
+#   average_expected = (
+#       (average_expected * total_reviews + (SELECT full_average FROM media WHERE id = (SELECT media_id FROM new_review))) / (total_reviews + 1)
+#   ),
+#   total_reviews = total_reviews + 1
+#   WHERE id = (SELECT account_id FROM new_review)
+#   RETURNING id
+# )
+# UPDATE media
+# SET total_reviews = total_reviews + 1,
+#     full_average = (
+#         (full_average * total_reviews + (SELECT rating FROM new_review)) 
+#         / (total_reviews + 1)
+#     )
+# WHERE id = (SELECT media_id FROM new_review) """
+
+
+
+    # return """WITH new_review AS (
+    #             INSERT INTO review (account_id, media_id, rating, description, date_reviewed)
+    #             VALUES (%s, %s, %s, %s, %s)
+    #             RETURNING account_id, media_id, rating
+    #           ), update_account AS (
+    #             UPDATE account
+    #             SET average_review = (
+    #                 (average_review * total_reviews + (SELECT rating FROM new_review)) / (total_reviews + 1)
+    #             ),
+    #             average_expected = (
+    #                 (average_expected * total_reviews + (SELECT full_average FROM media WHERE id = (SELECT media_id FROM new_review))) / (total_reviews + 1)
+    #             ),
+    #             total_reviews = total_reviews + 1
+    #             WHERE id = (SELECT account_id FROM new_review)
+    #             RETURNING id
+    #         )
+    #         UPDATE media
+    #         SET total_reviews = total_reviews + 1,
+    #         full_average = (
+    #             (full_average * total_reviews + (SELECT rating FROM new_review)) 
+    #             / (total_reviews + 1)
+    #         )
+    #         WHERE id = (SELECT media_id FROM new_review);"""
 
 
 
