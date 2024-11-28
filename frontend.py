@@ -19,8 +19,8 @@ def get_connection():
     return psycopg2.connect(
         host="localhost",       # Your database host
         database="cp317_db",    # Your database name
-        user="postgres",       # Your database username
-        password="password" # Your database password
+        user="heslip",       # Your database username
+        password="pass123" # Your database password
     )
 
 # Create connection and cursor for DB
@@ -331,6 +331,10 @@ def print_account_reviews(reviews):
 
 #Account Page (Other)
 def other_account_page():
+
+    if st.button("⬅️ Back to Homepage"):
+        st.session_state["current_page"] = "homepage"
+
     scroll()
     st.title("👤 View User Profile")
 
