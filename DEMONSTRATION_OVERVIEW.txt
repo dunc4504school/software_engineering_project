@@ -1,0 +1,32 @@
+
+#ACCOUNT 1:
+
+1. Attempt To Create New Accuont (username: movielover21)
+2. Attempt Fails
+3. Attempt To Create New Account (username: movielover20)
+4. Attempt Succeeds
+
+5. Go To Account, Demonstrate Modifying A Field
+
+6. Search Accounts (name: Smith)
+7. Click Some Matching Account
+8. Go To That Account
+9. Go Over Fields And Reviews
+
+10. Add This Account As A Follower
+
+11. Go To Social Page, Note That Follower Has Been Added
+
+12. Now Unfollow this person
+
+13. Now Go To Reviews, and complete a review
+
+#ACCOUNT 2
+
+1. Sign Into Account (username: JT123, password: password)
+
+2. Go To Account, go over fields
+3. In Account, cover Follower, Following, and click on an account to demonstrate
+4. From Within That Account, Look at their reviews, and click on one of the movies to get more info
+
+5. Elaborate On 

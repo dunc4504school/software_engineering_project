@@ -94,10 +94,10 @@ def setup_accounts(accounts):
         fname = random.choice(first_names)
         lname = random.choice(last_names)
         user = f"{fname[0]}{lname}{random.randint(100, 999)}"
-        date = datetime.fromtimestamp(row.timestamp).date()
+        date_to = date(2024, 10, random.randint(1,30))
         
         cur.execute(sq.add_account_backend(), 
-                    (f"{fname} {lname}", row.userId, user, date, "TEST", "TEST", "TEST"))
+                    (f"{fname} {lname}", row.userId, user, date_to, "TEST", "TEST", "TEST"))
     conn.commit()
 
 def add_media(path):
@@ -147,84 +147,53 @@ def add_review(path):
     accounts = data.groupby('userId')['timestamp'].min().reset_index()
     setup_accounts(accounts)
 
-
-
     for row in data.itertuples():
-        date = datetime.fromtimestamp(row.timestamp).date()
+        date_to = date(2024, 11, random.randint(1,30))
         cur.execute(sq.add_review_backend(), 
-                    (row.userId, row.movieId, row.rating, "TESTING", date, row.movieId, row.userId))
+                    (row.userId, row.movieId, row.rating, "TESTING", date_to, row.movieId, row.userId))
     conn.commit()
 
-def add_testing():
+def add_testing(av):
 
-    testing_users = [
-    ('Venkat Gunturi', 'Venn123'),
-    ('Gavin Heslip', 'Chislm'),
-    ('Hashim Jama', 'HJ1324'),
-    ('Zach Reid', 'BigTarra432_x'),
-    ('Lucas Duncan', 'PenUlty'),
-    ('Emily Carter', 'EmC123'),
-    ('Michael Nguyen', 'MikeN77'),
-    ('Sophia Patel', 'Sophie_P_21'),
-    ('Liam Brown', 'LiamBr_009'),
-    ('Olivia Smith', 'LivS2022'),
-    ('Noah Wilson', 'NoahWils90'),
-    ('Ava Johnson', 'AvaJ98x'),
-    ('Ethan Martinez', 'E_Martz_56'),
-    ('Mia Hernandez', 'MiaH45'),
-    ('Jacob Lee', 'JakeL_1234'),
-    ('Isabella Garcia', 'IzzyG88'),
-    ('William Anderson', 'WillA_22'),
-    ('Charlotte Moore', 'CharM007'),
-    ('James Thomas', 'JT99Rocks'),
-    ('Amelia Hall', 'AmyH_91'),
-    ('Benjamin Young', 'BenjiY19'),
-    ('Emma Scott', 'EmmaS23'),
-    ('Alexander Adams', 'AlexAdams_88'),
-    ('Ella Baker', 'EllaB07'),
-    ('Henry Walker', 'HWalker'),
-    ('Grace Lewis', 'GraceL98'),
-    ('Lucas Ramirez', 'LucaRam12'),
-    ('Mason Clark', 'MClarkX'),
-    ('Lily Turner', 'LilyT567'),
-    ('Elijah Rivera', 'EliR2020'),
-    ('Abigail Torres', 'AbbyT'),
-    ('Oliver Bennett', 'OBennett77'),
-    ('Chloe Stewart', 'ChloeS32'),
-    ('Logan Foster', 'LoganF_22'),
-    ('Sophia Hughes', 'SophH99'),
-    ('Jackson Perry', 'JackP88'),
-    ('Harper Price', 'HPrice42'),
-    ('Gabriel Morales', 'GabeMor123')]
-    account_ids = []
-    for account in testing_users:
-        cur.execute(sq.add_account(), (account[0],account[1],'TEST', 'TEST', 'TEST'))
-        cur.execute(sq.get_matching_account(), (account[1],))
-        account_ids.append(cur.fetchone())
-    conn.commit()
+    #Random Followings
+    cur.execute(sq.setup_account_ids())
+    account_ids = cur.fetchall()
+    for index, account_id in enumerate(account_ids):
 
-    #Creating Followings
-    for account_id in account_ids:
-        follow_count = random.randint(1, len(account_ids) - 1)
+        follow_count = random.randint(1, av)
         account_ids_to_follow = random.sample(account_ids, follow_count)
+
         for follower_id in account_ids_to_follow:
             if follower_id == account_id: continue
-            cur.execute(sq.add_following(), (account_id, follower_id))
+            cur.execute(sq.add_following(), (account_id, follower_id))    
     conn.commit()  
 
-    #Sample Media
-    cur.execute(sq.get_random_media(100))
-    media_ids = cur.fetchall()
+    #Duplicate Name
+    cur.execute("""
+        UPDATE ACCOUNT set username = %s where id = 7
+    """, ("movielover21",))
+    conn.commit()
 
-    #Creating Reviews
-    for media_id in media_ids:
-        review_count = random.randint(1, len(account_ids)-1)
-        account_ids_to_review = random.sample(account_ids, review_count)
+    #Demonstration Data Account
+    cur.execute("""
+        UPDATE ACCOUNT set name = %s, username = %s, date_created = %s, email = %s, phone = %s, password = %s
+        WHERE id = %s
+    """, 
+    ("John Testing", "JT123", "2024-11-01", "JT123@gmail.com", "9021101234", "password",5))
+    conn.commit()
 
-        for account_id_to_review in account_ids_to_review:
-            rating = random.randint(1, 10)
-            cur.execute(sq.add_review_backend(), (account_id_to_review, media_id, rating, 'TESTING', date.today(), media_id,account_id_to_review))
-        conn.commit()
+    #Add Reviews For Le Mis Of Friends (Might Break - Rerun)
+    cur.execute(""" SELECT follows_id from following where account_id = %s""", (5,))
+    follower_ids = cur.fetchall()
+    cur.execute(sq.add_review_backend(), (follower_ids[0], 4415, 8.5, "TEST", "2024-11-07", 4415, follower_ids[0]))
+    cur.execute(sq.add_review_backend(), (follower_ids[1], 4415, 9.7, "TEST", "2024-11-08", 4415, follower_ids[1]))
+    cur.execute(sq.add_review_backend(), (follower_ids[2], 4415, 9.2, "TEST", "2024-11-12", 4415, follower_ids[2]))
+    cur.execute(sq.add_review_backend(), (follower_ids[3], 4415, 8.9, "TEST", "2024-11-30", 4415, follower_ids[3]))
+    conn.commit()
+
+
+
+
 
 
 path = "movies_data.zip"
@@ -234,6 +203,10 @@ path2 = "ratings_small.zip"
 add_review(path2)
 
 
-#Randomized Personal (No Connection To Other)
-add_testing()
+#Optional Slimming (removing non reviewed)
+cur.execute(sq.slim_media())
+conn.commit()
+
+#Randomized Connections
+add_testing(30)
 

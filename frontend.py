@@ -28,27 +28,38 @@ conn = get_connection()
 cur = conn.cursor()
 
 
-# Welcome Page
+
+def get_symbol(val):
+    if val > 0:
+        return "✅"
+    else:
+        return "❗"
+def scroll():
+    st.markdown("""
+    <script>
+        window.scrollTo(0, 0);
+    </script>
+    """, unsafe_allow_html=True)
+
+
+# Welcome Page (*)
 def welcome_page():
-    # Centered image using st.image
+
+    #Photo
     st.image("logo2.jpg", caption=None, width=600, use_container_width=False)
+    col1, col2, col3 = st.columns([1, 1, 2]) 
 
-    # Buttons for Signup and Login
-    col1, col2, col3 = st.columns([1, 1, 2])  # Outer columns create spacing
-    with col2:  # Center column for buttons
-        signup = st.button("Sign Up", key="signup")
+    #Sign Up
+    with col2: 
+        if st.button("Sign Up", key="signup"):
+            st.session_state["current_page"] = "signup"
+
+    #Login
     with col3:
-        login = st.button("Login", key="login")
+        if st.button("Login", key="login"):
+            st.session_state["current_page"] = "login"
     
-    # Handle button clicks
-    if signup:
-        st.session_state["current_page"] = "signup"
-    if login:
-        st.session_state["current_page"] = "login"
-
-
-
-# Function to render the signup page
+# SignUp Page (*)
 def signup_page():
     st.title("📝 Sign Up")
     
@@ -59,41 +70,32 @@ def signup_page():
     phone = st.text_input("Phone Number")
     password = st.text_input("Password", type="password")
     
+    #Attempt To Create
     if st.button("Create Account"):
+        #If Not All Info
         if not name or not username or not email or not phone or not password:
             st.error("Please fill out all fields.")
             return
         
+        #Try To Create Account
         try:
-             # Attempt to insert into the database
-            cur.execute("INSERT INTO account (name, username, email, phone, password) VALUES (%s, %s, %s, %s, %s)", 
-            (name, username, email, phone, password))
+            cur.execute(sq.add_account(), (name, username, email, phone, password))
             conn.commit()
 
-            # Check if the operation was successful
+            #If Successful
             if cur.rowcount > 0:
                 st.success("Account created successfully! Redirecting to login...")
                 st.session_state["current_page"] = "create_account"
                 st.rerun()
+            #If Unsuccessfull
             else:
                 st.error("Failed to create account. Please try again.")
         
-        finally:
-            conn.close()
+        except:
+            st.error("Error Accessing Database")
 
 
-# Login verification function using attempt_login query
-def verify_login(username, password):
-    conn = get_connection()
-    cur = conn.cursor()
-    sql = sq.attempt_login()
-    cur.execute(sql, (username, password))
-    user = cur.fetchone()
-    cur.close()
-    conn.close()
-    return user[0] if user else None
-
-# Streamlit Login Page
+# Login Page (*)
 def login_page():
     st.title("Login Page")
 
@@ -105,22 +107,28 @@ def login_page():
     password = st.text_input("Password", type="password", key="login_password")
     login_button = st.button("Login")
 
-    # Login Button Logic
+    # Attempt To Login
     if login_button:
+        #If Both Filled Out
         if username and password:
-            user_id = verify_login(username, password)
-            if user_id:  # Assuming `verify_login` returns `user_id` on success
+
+            #Check Database
+            cur.execute(sq.attempt_login(), (username, password))
+            user_id = cur.fetchone()
+
+            #If Returns Valid Account
+            if user_id:
                 st.success("Login successful! Redirecting to homepage...")
-                # Set the session for the logged-in user
                 st.session_state["user_id"] = user_id
                 st.session_state["username"] = username
                 st.session_state["current_page"] = "homepage"
+            #Fails
             else:
                 st.error("Invalid username or password. Please try again.")
         else:
             st.warning("Please enter both username and password.")
 
-# Function to render the create account page
+# Create Account Page (*)
 def create_account_page():
     st.title("🎬 Welcome to Movie Recommendation System!")
     st.subheader("Create Your Account")
@@ -146,7 +154,7 @@ def create_account_page():
             st.success("Account creation successful!")
             st.session_state["current_page"] = "login"
 
-# Function to render the homepage
+# Homepage
 def homepage():
     account_id = st.session_state.get("user_id")
     # Add a title with an icon
@@ -165,29 +173,34 @@ def homepage():
     )
 
     # Display the four options as buttons in a grid layout
-    col1, col2 = st.columns(2)
+    col1, col2,col3 = st.columns(3)
 
     with col1:
-        if st.button("🎥 Reviews", help="Check out reviews of movies and TV shows."):
-            st.session_state["current_page"] = "reviews"
-        if st.button("👤 Account", help="Manage your account settings and preferences."):
+        if st.button("👤 Manage Account", help="Manage your account settings and preferences."):
             st.session_state["current_page"] = "account"
 
-        # Logout Option
-        st.markdown("### Logout")
-        if st.button("Logout"):
+        if st.button("🎥 Make Reviews", help="Check out reviews of movies and TV shows."):
+            st.session_state["current_page"] = "reviews"
+        
+
+    with col2:
+        if st.button("🤝 Social", help="See Peer Activity"):
+            st.session_state["current_page"] = "social"
+        if st.button("🔍 Search", help="Search For Media"):
+            st.session_state["current_page"] = "search"
+
+    with col3:
+        if st.button("✍️ Reccomendations", help="Get Reccomendations"):
+            st.session_state["current_page"] = "reccomendations"
+        if st.button("❌ Logout"):
             del st.session_state["user_id"]
             st.session_state["current_page"] = "welcome"
             st.success("You have been logged out.")
 
-    with col2:
-        if st.button("🤝 Social", help="Connect with friends and see what they're watching."):
-            st.session_state["current_page"] = "social"
-        if st.button("🔍 Search", help="Search our library for movies and TV shows."):
-            st.session_state["current_page"] = "search"
-
     get_movie_recommendations(account_id)
 
+
+#Reviews Page
 def reviews_page():
     # Ensure account_id is retrieved from session state
     account_id = st.session_state.get("user_id")
@@ -207,6 +220,7 @@ def reviews_page():
     # Media selection list
     conn = get_connection()
     cur = conn.cursor()
+
     cur.execute("SELECT name FROM media ORDER BY name;")
     media_list = [row[0] for row in cur.fetchall()]
     conn.close()
@@ -216,49 +230,29 @@ def reviews_page():
 
     # User input for review
     rating = st.slider("Rating", min_value=0.0, max_value=10.0, step=0.1)
-    review_text = st.text_area("Write your review here...", placeholder="What did you think about the movie?")
-
     # Submit button logic
     if st.button("Submit Review"):
-        if selected_movie_name and review_text:
+        if selected_movie_name:
             try:
                 # Insert the review into the database
                 conn = get_connection()
                 cur = conn.cursor()
                 sql = sq.add_review_frontend()
-                cur.execute(sql, (account_id, selected_movie_name, rating, review_text))
+                cur.execute(sql, (account_id, selected_movie_name, rating, "None"))
                 conn.commit()
                 cur.close()
                 conn.close()
-                st.success(f"Review submitted successfully for **{selected_movie_name}**!")
+                st.session_state["current_page"] = "account"
+                return
             except Exception as e:
                 st.error(f"An error occurred while submitting your review: {e}")
         else:
             st.warning("Please fill in all fields.")
+        
 
-    # Display latest reviews
-    st.markdown("**Latest Reviews:**")
-    try:
-        conn = get_connection()
-        cur = conn.cursor()
-        sql = sq.get_recent_reviews()
-        cur.execute(sql, (account_id,))
-        reviews = cur.fetchall()
-        cur.close()
-        conn.close()
-
-        if reviews:
-            for review in reviews:
-                st.write(f"🎬 **{review[3]}** - {review[1]}⭐")
-                st.write(f"_Reviewed on {review[2]}:_ {review[0]}")
-                st.markdown("---")
-        else:
-            st.info("You haven't reviewed any movies yet.")
-    except Exception as e:
-        st.error(f"An error occurred while fetching reviews: {e}")
-
-
+#Account Page (Our)
 def account_page():
+    scroll()
     if st.button("⬅️ Back to Homepage"):
         st.session_state["current_page"] = "homepage"
 
@@ -281,33 +275,26 @@ def account_page():
 
         if not user_details:
             st.error("Could not fetch account details.")
-            return
-
-        st.markdown("### Account Information")
-        st.write(f"**Name:** {user_details[1]}")
-        st.write(f"**Username:** {user_details[2]}")
-        st.write(f"**Email:** {user_details[4]}")
-        st.write(f"**Phone Number:** {user_details[3]}")
-        st.write(f"**Total Reviews:** {user_details[5]}")
-        st.write(f"**Followers:** {user_details[6]}")
-        st.write(f"**Following:** {user_details[7]}")
+            return    
 
         # Update Profile Section
-        st.markdown("### Update Your Profile")
+        st.markdown("### Your Profile/Info")
         with st.form(key="update_profile_form"):
-            new_name = st.text_input("Full Name", value=user_details[1])
-            new_username = st.text_input("Username", value=user_details[2])
-            new_phone = st.text_input("Phone Number", value=user_details[3])
-            new_email = st.text_input("Email", value=user_details[4])
+            new_name = st.text_input("Full Name(shown)", value=user_details[1])
+            new_username = st.text_input("Username(shown)", value=user_details[2])
+            new_phone = st.text_input("Phone Number(not shown)", value=user_details[3])
+            new_email = st.text_input("Email(not shown)", value=user_details[4])
+            st.write(f"**Total Reviews:** {user_details[5]}")
+            st.write(f"**Followers:** {user_details[6]}")
+            st.write(f"**Following:** {user_details[7]}")
             submit_update = st.form_submit_button("Save Changes")
 
+        #Commit Update
         if submit_update:
             try:
-                cur.execute(
-                    """
-                    UPDATE account 
-                    SET name = %s, username = %s, phone = %s, email = %s
-                    WHERE id = %s
+                cur.execute(""" UPDATE account 
+                        SET name = %s, username = %s, phone = %s, email = %s
+                        WHERE id = %s
                     """,
                     (new_name, new_username, new_phone, new_email, account_id),
                 )
@@ -317,197 +304,30 @@ def account_page():
                 st.error(f"Error updating profile: {e}")
 
         # Account Reviews Section
-        st.markdown("### Your Reviews")
+        st.markdown("### Your Reviews (expand)")
         cur.execute(sq.get_account_review(), (account_id,))
-        reviews = cur.fetchall()
+        print_account_reviews(cur.fetchall())
 
-        if reviews:
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
+    finally:
+        cur.close()
+        conn.close()
+
+#Prints List Of Reviews For Account
+def print_account_reviews(reviews):
+    if reviews:
+        with st.expander(f"Date, Name, Rating, (Difference From Global)"):
             for review in reviews:
-                st.write(f"🎬 **{review[0]}** ({review[5]}) - Rated {review[1]}/10")
-                st.write(f"_Review: {review[3]}_")
-        else:
-            st.write("You have not reviewed any movies yet.")
+                if st.button(f"🎬{review[7]} - **{review[0]}**({review[4]}) - Rated {review[1]}/10 ({round(review[2],1)}{get_symbol(review[2])})"):
+                    st.session_state["current_page"] = "movie_profile"
+                    st.session_state["selected_movie_id"] = review[6]
+    else:
+            st.write("No reviews yet.")
 
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
-    finally:
-        cur.close()
-        conn.close()
-
-
-def social_page():
-    if st.button("⬅️ Back to Homepage"):
-        st.session_state["current_page"] = "homepage"
-
-    # Check navigation state
-    if st.session_state.get("view_profile", False):
-        # If viewing a profile, call view_profile_page
-        user_id = st.session_state.get("selected_user_id")
-        if st.button("⬅️ Back to Social Page"):
-            st.session_state["view_profile"] = False
-            st.rerun()
-        view_profile_page(user_id)
-        return
-
-    st.title("🤝 Social Page")
-    st.subheader("Stay Connected and Discover Movies")
-
-    account_id =  st.session_state.get("user_id")
-    if account_id is None:
-        st.warning("You need to log in to access the social page.")
-        return
-
-    # Database connection
-    conn = get_connection()
-    cur = conn.cursor()
-
-    try:
-        # Fetch followers and following
-        cur.execute(sq.get_account_follows(), (account_id,))
-        followers = cur.fetchall()
-
-        cur.execute(sq.get_account_following(), (account_id,))
-        following = cur.fetchall()
-
-        st.markdown("### Connections")
-        st.write(f"**Followers:** {len(followers)}")
-        st.write(f"**Following:** {len(following)}")
-
-        # Display follower and following details
-        if followers:
-            st.markdown("#### Followers")
-            for follower in followers:
-                st.write(f"👤 {follower[1]} - Reviews: {follower[2]} - Following: {follower[3]}")
-
-        if following:
-            st.markdown("#### Following")
-            for follow in following:
-                st.write(f"👤 {follow[1]} - Reviews: {follow[2]} - Following: {follow[3]}")
-
-        # Manage connections
-        st.markdown("### Manage Connections")
-        col1, col2 = st.columns(2)
-
-        # fetch all accounts for dropdown
-        cur.execute(sq.get_all_accounts(), (account_id,))
-        all_accounts = cur.fetchall()
-        account_names = [acc[1] for acc in all_accounts] 
-
-        with col1:
-            new_follower = st.selectbox("Select a user to add as follower", options= ["Search for a friend..."] + account_names, index=0)  # Assuming account_names contains a list of usernames
-            if st.button("Add Follower"):
-                try:
-                    # Trim any extra spaces in the input username
-                    new_follower = new_follower.strip()
-                    
-                    # Check if the new_follower exists in the account table
-                    cur.execute("SELECT id FROM account WHERE LOWER(name) = LOWER(%s)", (new_follower,))
-                    result = cur.fetchone()
-                    
-                    if result:
-                        new_follower_id = result[0]  # Get the account_id for the selected user
-                        
-                        # Check if the current user is already following the new_follower
-                        cur.execute("SELECT 1 FROM following WHERE account_id = %s AND follows_id = %s", (account_id, new_follower_id))
-                        already_following = cur.fetchone()
-                        
-                        if already_following:
-                            st.warning(f"You are already following {new_follower}.")
-                        else:
-                            # Insert the follow relationship into the following table
-                            cur.execute(sq.add_following(), (account_id, new_follower_id))
-                            conn.commit()
-                            
-                            st.success(f"Added {new_follower} as a follower!")
-                    else:
-                        st.error(f"User {new_follower} not found!")
-                        
-                except Exception as e:
-                    st.error(f"Error adding follower: {e}")
-
-
-
-        with col2:
-            unfollow = st.selectbox(
-        "Select a user to unfollow", 
-        options=[""] + account_names, 
-        format_func=lambda x: "Search for a friend..." if x == "" else x, 
-        index=0
-        )   
-            if st.button("Remove Following"):
-                try:
-                    # Trim any extra spaces in the input username
-                    unfollow = unfollow.strip()
-                    
-                    # Check if the unfollow user exists in the account table
-                    cur.execute("SELECT id FROM account WHERE LOWER(name) = LOWER(%s)", (unfollow,))
-                    result = cur.fetchone()
-                    
-                    if result:
-                        unfollow_id = result[0]  # Get the account_id for the user to unfollow
-                        
-                        # Check if the current user is following the user to unfollow
-                        cur.execute("SELECT 1 FROM following WHERE account_id = %s AND follows_id = %s", (account_id, unfollow_id))
-                        following_exists = cur.fetchone()
-                        
-                        if following_exists:
-                            # Remove the follow relationship from the following table
-                            cur.execute(sq.delete_following(), (account_id, unfollow_id))
-                            conn.commit()
-                            
-                            st.success(f"Removed {unfollow} from following list!")
-                        else:
-                            st.warning(f"You are not following {unfollow}.")
-                    else:
-                        st.error(f"User {unfollow} not found!")
-                        
-                except Exception as e:
-                    st.error(f"Error removing following: {e}")
-
-
-        # Friends' activities
-        st.markdown("### Friends' Recent Activities")
-        cur.execute(sq.get_account_recent(), (account_id,))
-        activities = cur.fetchall()
-
-        if activities:
-            for activity in activities:
-                st.write(f"🎥 {activity[5]} watched {activity[4]} ({activity[1]}, {activity[2]}, {activity[3]}) and rated it {activity[6]}/10.")
-        else:
-            st.write("No recent activities from your connections.")
-
-        # Add View Profile Navigation
-        st.markdown("### View a Friend's Profile")
-        selected_friend = st.selectbox(
-            "Select a friend to view their profile:",
-            options=[""] + [f[1] for f in following],  # Extract usernames from `following`
-            format_func=lambda x: "Select a friend..." if x == "" else x,
-        )
-        if st.button("View Profile"):
-            # Set navigation state and selected user ID
-            for f in following:
-                if f[1] == selected_friend:
-                    st.session_state["view_profile"] = True
-                    st.session_state["selected_user_id"] = f[0]
-                    st.rerun()
-
-        # Recommendations
-        st.markdown("### Personalized Recommendations")
-        if activities:
-            st.write("Based on your followers' recent activities, we recommend:")
-            for activity in activities[:5]:  # Show up to 5 recommendations
-                st.write(f"🎬 {activity[2]} - Recommended by {activity[3]}")
-        else:
-            st.write("Start following people to get personalized recommendations!")
-
-    except Exception as e:
-        st.error(f"An error occurred: {e}")
-    finally:
-        cur.close()
-        conn.close()
-
-
-def view_profile_page(user_id):
+#Account Page (Other)
+def other_account_page():
+    scroll()
     st.title("👤 View User Profile")
 
     # Fetch and display profile details
@@ -515,32 +335,27 @@ def view_profile_page(user_id):
         conn = get_connection()
         cur = conn.cursor()
 
-        cur.execute(sq.get_account_summary(), (user_id,))
+        cur.execute(sq.get_account_summary(), (st.session_state["selected_account_id"],))
         profile = cur.fetchone()
 
         if profile:
-            user_id, name, username, total_reviews, total_followers, total_following, avg_rating = profile
-
+            user_id, name, username, total_reviews, total_followers, total_following, avg_rating, delta = profile
+            st.markdown("### Profile/Info")
             # Display profile information
-            st.markdown(f"### **{name}**")
+            st.markdown(f"- **Name:** {name}")
             st.markdown(f"- **Username:** {username}")
             st.markdown(f"- **Total Reviews:** {total_reviews}")
             st.markdown(f"- **Followers:** {total_followers}")
             st.markdown(f"- **Following:** {total_following}")
-            st.markdown(f"- **Average Rating:** {avg_rating:.1f}" if avg_rating else "- **Average Rating:** N/A")
-
+            if avg_rating: 
+                st.markdown(f"- **Average Rating:** {avg_rating:.1f} ({round(delta,1)}{get_symbol(delta)})")
+            else: st.markdown(f"- **Average Rating:** N/A")
+            
             # Fetch and display reviews
-            cur.execute(sq.get_account_review(), (user_id,))
-            reviews = cur.fetchall()
-
-            if reviews:
-                st.markdown("### Reviews:")
-                for review in reviews:
-                    movie_name, rating, diff, description, genre_name, type_name = review
-                    st.markdown(f"- 🎬 **{movie_name}** ({genre_name}, {type_name}) - Rated: {rating}/10")
-                    st.markdown(f"  _Review: {description}_")
-            else:
-                st.info("No reviews found.")
+            st.markdown("### Reviews (expand)")
+            cur.execute(sq.get_account_review(), (st.session_state["selected_account_id"],))
+            print_account_reviews(cur.fetchall())
+            
         else:
             st.error("User not found.")
     except Exception as e:
@@ -549,95 +364,10 @@ def view_profile_page(user_id):
         cur.close()
         conn.close()
 
-
-def search_page():
-    st.title("🔍 Search for Movies")
-
-    if st.button("Back to Homepage"):
-        st.session_state["current_page"] = "homepage"
-        st.rerun()
-
-    account_id =  st.session_state.get("user_id")
-    if account_id is None:
-        st.warning("You need to log in to access the account page.")
-        return
-    
-    # Search bar
-    query = st.text_input("Search Movies:")
-    if query:
-        movies = search_movies(query)
-        if movies.empty:
-            st.write("No results found.")
-        else:
-            # Loop through the DataFrame and display each movie in a styled card
-            for _, row in movies.iterrows():
-                # Display movie info as a styled card
-                st.markdown(f"""
-                <div style='
-                    background: #ffffff;
-                    border-radius: 10px;
-                    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-                    margin-bottom: 20px;
-                    padding: 20px;
-                '>
-                    <h3 style='color: #333;'>{row['Name']}</h3>
-                    <p><b>Type:</b> {row['Type']}</p>
-                    <p><b>Genre:</b> {row['Genres']}</p>
-                    <p><b>Release Date:</b> {row['Release']}</p>
-                </div>
-                """, unsafe_allow_html=True)
-
-                # Create a Streamlit button for viewing details
-                if st.button(f"View Details for {row['Name']}"):
-                    st.session_state["selected_movie_id"] = row["ID"]
-                    st.session_state["current_page"] = "movie_profile"
-                    st.rerun()
-
-    # Global Recommendations Section
-    get_movie_recommendations(account_id)
-
-    # Friends' Recommendations Section
-    st.subheader("👫 Friends' Recommendations")
-    # Placeholder for friends' recommendations (e.g., movies recommended by friends)
-    st.markdown("""
-    <div style="
-        background: #f1f1f1;
-        border-radius: 10px;
-        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-        margin-bottom: 20px;
-        padding: 20px;
-    ">
-        <h4 style='color: #333;'>Here are some movies recommended by your friends:</h4>
-        <ul>
-            <li><b>Movie A</b> - Genre: Romance, Rating: 8.8/10</li>
-            <li><b>Movie B</b> - Genre: Sci-Fi, Rating: 8.6/10</li>
-            <li><b>Movie C</b> - Genre: Action, Rating: 8.4/10</li>
-            <li><b>Movie D</b> - Genre: Horror, Rating: 8.2/10</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
-
-def search_movies(query):
-    sql = sq.search_movies_by_attributes()
-    search_term = f"%{query.lower()}%"
-    conn = get_connection()  # Ensure a valid DB connection
-    cur = conn.cursor()
-    cur.execute(sql, (search_term, search_term, search_term, search_term, search_term, search_term))
-    results = cur.fetchall()
-    cur.close()
-    conn.close()
-    
-    if not results:
-        return pd.DataFrame()
-    
-    return pd.DataFrame(results, columns=["ID", "Name", "Type", "Genres", "Release"])
-
-
-
-def movie_profile_page():
-    movie_id = st.session_state.get("selected_movie_id")  # Retrieve selected movie ID from session state
-    movie = get_movie_details(movie_id)  # Function to fetch movie details based on ID
+#Media Page
+def media_page():
+    scroll()
+    movie = get_movie_details(st.session_state["selected_movie_id"])  
 
     # Back to Search Button
     if st.button("⬅️ Back to Search"):
@@ -663,35 +393,161 @@ def movie_profile_page():
             st.session_state["selected_media_name"] = movie['Name']            
             st.rerun()
 
-        # Divider
-        st.markdown("---")
-
         # Fetch and Display Recent Reviews
-        st.subheader("📝 Recent Reviews")
+        st.subheader("📝 Recent Reviews By Following (expand)")
         try:
             conn = get_connection()  # Establish database connection
             cur = conn.cursor()
 
-            # SQL to fetch recent reviews for the movie
-            sql = sq.get_specific_reviews()
-            cur.execute(sql, (movie_id,))
-            reviews = cur.fetchall()
+            cur.execute(sq.get_media_reviews(), (st.session_state["selected_movie_id"],st.session_state["user_id"]))
+            print_media_reviews(cur.fetchall())
+
             cur.close()
             conn.close()
-
-            if reviews:
-                # Display each review
-                for review in reviews:
-                    st.markdown(f"**{review[3]}** rated it **{review[1]}⭐**")
-                    st.markdown(f"_Reviewed on {review[2]}:_ {review[0]}")
-                    st.markdown("---")
-            else:
-                st.info("No reviews yet for this movie.")
         except Exception as e:
             st.error(f"An error occurred while fetching reviews: {e}")
     else:
-        st.error("Movie details not found.")
+        st.error(f"Movie details not found.")
 
+#Prints List Of Media Reviews (From Following)
+def print_media_reviews(reviews):
+    if reviews:
+         with st.expander(f"Date, Account, Rating, (Difference From Global)"):
+            for review in reviews:
+                if st.button(f"🧑‍🧒 {review[1]} - {review[2]} - Rated {review[0]}/10 ({round(review[3],1)}{get_symbol(review[3])})"):
+                    st.session_state["current_page"] = "account_profile"
+                    st.session_state["selected_account_id"] = review[4]
+
+def print_following(following, name, f):
+    with st.expander(f"{name} ({len(following)})"):
+        for foll in following:
+            col11, col22 = st.columns([2, 1])
+
+            with col11:
+                if st.button(f"{foll[1]} ({foll[2]}) - {foll[3]}", key=f"{f}{foll[0]}"):
+                    st.session_state["current_page"] = "account_profile"
+                    st.session_state["selected_account_id"] = foll[0]
+            with col22:
+                if st.button(f"Remove:{foll[0]}", key=f"{f}{foll[0]}R"):
+                    if name == "Following":
+                        cur.execute(sq.delete_following(), (st.session_state["user_id"], foll[0]))
+                    else:
+                        cur.execute(sq.delete_following(), (foll[0], st.session_state["user_id"]))
+                    conn.commit()
+                    st.session_state["current_page"] = "social"
+
+
+#SOCIAL PAGE
+def social_page():
+    if st.button("⬅️ Back to Homepage"):
+        st.session_state["current_page"] = "homepage"
+
+    # Check navigation state
+    if st.session_state.get("view_profile", False):
+        # If viewing a profile, call view_profile_page
+        user_id = st.session_state.get("selected_user_id")
+        if st.button("⬅️ Back to Social Page"):
+            st.session_state["view_profile"] = False
+            st.rerun()
+        view_profile_page(user_id)
+        return
+
+    st.title("🤝 Social Page")
+    st.subheader("Stay Connected and Discover Movies")
+
+    account_id =  st.session_state.get("user_id")
+    if account_id is None:
+        st.warning("You need to log in to access the social page.")
+        return
+
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    st.write("## Discover Accounts")
+    query = st.text_input("Search Account:")
+    if query:
+        cur.execute(sq.get_searched_account(), (st.session_state["user_id"], f"%{query.lower()}%"))
+        
+        matchs = cur.fetchall()
+        if not matchs:
+            st.write("No results found.")
+        else:
+            with st.expander(f"Matchs"):
+                for row in matchs:
+                    col11, col22 = st.columns([2, 1])
+
+                    with col11:
+                        if st.button(f"{row[1]} ({row[2]})"):
+                            st.session_state["current_page"] = "account_profile"
+                            st.session_state["selected_account_id"] = row[0]
+                    
+                    with col22:
+                        if row[3] == 1 :
+                            st.write("Already Followed")
+                        else:
+                            if st.button(f" Follow: {row[2]}"):
+                                cur.execute(sq.add_following(), (st.session_state["user_id"], row[0]))
+                                conn.commit()
+                                st.rerun()
+                        
+                            
+    
+    st.write("## Your Following")
+    cur.execute(sq.get_account_following(), (account_id,))
+    print_following(cur.fetchall(), "Following", "F")
+    
+    cur.execute(sq.get_account_follows(), (account_id,))
+    print_following(cur.fetchall(), "Followers", "f")
+
+
+
+#SEARCH PAGE
+def search_page():
+    st.title("🔍 Search for Movies")
+
+    if st.button("Back to Homepage"):
+        st.session_state["current_page"] = "homepage"
+        st.rerun()
+
+    account_id =  st.session_state.get("user_id")
+    if account_id is None:
+        st.warning("You need to log in to access the account page.")
+        return
+    
+    # Search bar
+    query = st.text_input("Search Movies:")
+    if query:
+        movies = search_movies(query)
+        if movies.empty:
+            st.write("No results found.")
+        else:
+            
+            for _, row in movies.iterrows():
+                if st.button(f"{row['Name']} ({row['Type']})  -  -  -  {row['Genres']}"):
+                    st.session_state["selected_movie_id"] = row["ID"]
+                    st.session_state["current_page"] = "movie_profile"
+                    st.rerun()
+
+    # Global Recommendations Section
+    get_movie_recommendations(account_id)
+
+
+def search_movies(query):
+    sql = sq.search_movies_by_attributes()
+    search_term = f"%{query.lower()}%"
+    conn = get_connection()  # Ensure a valid DB connection
+    cur = conn.cursor()
+    cur.execute(sql, (search_term, search_term, search_term, search_term, search_term, search_term))
+    results = cur.fetchall()
+    cur.close()
+    conn.close()
+    
+    if not results:
+        return pd.DataFrame()
+    
+    return pd.DataFrame(results, columns=["ID", "Name", "Type", "Genres", "Release"])
+ 
 
 # Function to fetch movie details
 def get_movie_details(movie_id):
@@ -782,7 +638,7 @@ def get_movie_recommendations(user_id):
             SELECT media_id FROM review WHERE account_id = %s
         )
         ORDER BY m.full_average DESC, m.date_released DESC
-        LIMIT 5;
+        LIMIT 3;
         """
 
         # Execute the query
@@ -798,13 +654,13 @@ def get_movie_recommendations(user_id):
                 margin-bottom: 20px;
                 padding: 20px;
             ">
-                <h4 style='color: #333;'>Here are some movies recommended globally:</h4>
+                <h4 style='color: #333;'>Here are some uniquely recommended films :</h4>
             </div>
         """, unsafe_allow_html=True)
 
         if recommendations:
             # Create columns for displaying movies horizontally
-            columns = st.columns(5)  # Create 5 columns for 5 movies
+            columns = st.columns(3)  # Create 5 columns for 5 movies
 
             for idx, movie in enumerate(recommendations):
                 movie_id, movie_name, genre1, genre2, genre3, type_name, full_average, date_released = movie
@@ -872,33 +728,52 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Navigation Block
+
+
+#Welcome Page
 if st.session_state["current_page"] == "welcome":
     welcome_page()
 
+#Login Page
 elif st.session_state["current_page"] == "login":
     login_page()
 
+#Sign Up Page
 elif st.session_state["current_page"] == "signup":
     signup_page()
 
+#Create Account Page
 elif st.session_state["current_page"] == "create_account":
     create_account_page()
 
+#HomePage
 elif st.session_state["current_page"] == "homepage":
     homepage()
 
+#Add Review
 elif st.session_state["current_page"] == "reviews":
     reviews_page()
 
+#Account Details
 elif st.session_state["current_page"] == "account":
     account_page()
 
+#Reccomendations
+elif st.session_state["current_page"] == "recommendation":
+    recommendation_page()
+
+#Social
 elif st.session_state["current_page"] == "social":
     social_page()
 
+#Search
 elif st.session_state["current_page"] == "search":
     search_page()
 
+#Movie Profile
 elif st.session_state["current_page"] == "movie_profile":
-    movie_profile_page()
+    media_page()
+
+#Other Account
+elif st.session_state["current_page"] == "account_profile":
+    other_account_page()

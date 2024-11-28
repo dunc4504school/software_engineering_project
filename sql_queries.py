@@ -244,10 +244,7 @@ def get_searched_account():
     return f"""SELECT id, 
                     name, 
                     username, 
-                    total_reviews, 
-                    total_followers,
-                    total_following,
-                    (Select AVG(rating) from review where account_id = id)
+                    (SELECT 1 from following where account_id = %s and follows_id = id) 
             FROM ACCOUNT
             WHERE username LIKE %s     
             """
@@ -315,7 +312,8 @@ def get_account_summary():
                     total_reviews, 
                     total_followers,
                     total_following,
-                    (Select AVG(rating) from review where account_id = id)
+                    average_review,
+                    average_review - average_expected
             FROM ACCOUNT
             WHERE id = %s     
             """
@@ -337,7 +335,7 @@ def get_self_summary():
 #Returns Account Info, if username and password match some record
 def attempt_login():
     return """
-            SELECT * from account 
+            SELECT id from account 
             WHERE username = %s AND
             password = %s
             """
@@ -347,10 +345,12 @@ def get_account_review():
     return """
         SELECT m.name,
             r.rating, 
-            r.rating - m.full_average,
+            r.rating - m.full_average As Delta,
             r.description, 
             CONCAT_WS(', ', g.name, g2.name, g3.name) AS genres,  
-            t.name AS type_name    
+            t.name AS type_name,
+            m.id,
+            r.date_reviewed
         FROM review r
         JOIN media m ON r.media_id = m.id
         LEFT JOIN genre g ON m.genre = g.id
@@ -358,25 +358,55 @@ def get_account_review():
         LEFT JOIN genre g3 ON m.genre3 = g3.id   
         LEFT JOIN type t ON m.type = t.id    
         WHERE r.account_id = %s
-        GROUP BY r.media_id, r.rating, r.description, m.name, m.full_average, g.name, g2.name, g3.name, t.name;
+        ORDER BY r.date_reviewed DESC;
+        """
+
+def get_media_reviews():
+    return """
+            SELECT 
+    r.rating, 
+    r.date_reviewed, 
+    a.username, 
+    r.rating - m.full_average AS rating_delta,
+    a.id
+FROM 
+    review r
+JOIN 
+    account a ON r.account_id = a.id
+JOIN 
+    media m ON r.media_id = m.id
+WHERE 
+    r.media_id = %s
+    AND EXISTS (
+        SELECT 1 
+        FROM following 
+        WHERE account_id = %s 
+        AND follows_id = a.id
+    )
+ORDER BY 
+    r.date_reviewed DESC
+LIMIT 10;
+            
         """
 
 #Returns the list of account that follow this account
 def get_account_follows():
     return """
-    SELECT a.id, a.name, a.total_reviews, a.total_following, a.total_followers 
+    SELECT a.id, a.name, a.username, f.date_followed
     FROM following f
     JOIN account a on f.account_id = a.id
-    WHERE f.follows_id = %s;"""
+    WHERE f.follows_id = %s
+    ORDER BY f.date_followed DESC;"""
 
 
 #Returns the list of acccounts that this account is following
 def get_account_following():
     return  """
-    SELECT a.id, a.name, a.total_reviews, a.total_following, a.total_followers 
+    SELECT a.id, a.name, a.username, f.date_followed 
     FROM following f
     JOIN account a ON f.follows_id = a.id
-    WHERE f.account_id = %s;"""
+    WHERE f.account_id = %s
+    ORDER BY f.date_followed DESC;"""
 
 
 #Returns The Most Recent Reviews Made By People This Account Follows
@@ -448,15 +478,7 @@ def get_recent_reviews():
         """ 
 
 # Returns 5 most recent reviews for a specific movie
-def get_specific_reviews():
-    return """
-            SELECT r.description, r.rating, r.date_reviewed, a.username
-            FROM review r
-            JOIN account a ON r.account_id = a.id
-            WHERE r.media_id = %s
-            ORDER BY r.date_reviewed DESC
-            LIMIT 5;
-        """
+
 
 
 def delete_all():
@@ -499,4 +521,23 @@ WHERE
     AND (m.genre = %s OR m.genre2 = %s OR m.genre3 = %s) 
     AND avg_rating_from_followed > 0
 ORDER BY 
-    total_score DESC; """                
+    total_score DESC; """     
+
+
+def slim_media():
+    return """
+        DELETE FROM media
+        WHERE NOT EXISTS (
+            SELECT 1 
+            FROM review 
+            WHERE review.media_id = media.id
+        );
+    """
+
+
+def setup_account_ids():
+    return """
+        SELECT id
+        from account;
+    
+    """
