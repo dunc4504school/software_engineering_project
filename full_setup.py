@@ -179,11 +179,11 @@ def add_testing(av):
         UPDATE ACCOUNT set name = %s, username = %s, date_created = %s, email = %s, phone = %s, password = %s
         WHERE id = %s
     """, 
-    ("John Testing", "JT123", "2024-11-01", "JT123@gmail.com", "9021101234", "password",5))
+    ("John Testing", "JT123", "2024-11-01", "JT123@gmail.com", "9021101234", "password",6))
     conn.commit()
 
     #Add Reviews For Le Mis Of Friends (Might Break - Rerun)
-    cur.execute(""" SELECT follows_id from following where account_id = %s""", (5,))
+    cur.execute(""" SELECT follows_id from following where account_id = %s""", (6,))
     follower_ids = cur.fetchall()
     cur.execute(sq.add_review_backend(), (follower_ids[0], 4415, 8.5, "TEST", "2024-11-07", 4415, follower_ids[0]))
     cur.execute(sq.add_review_backend(), (follower_ids[1], 4415, 9.7, "TEST", "2024-11-08", 4415, follower_ids[1]))

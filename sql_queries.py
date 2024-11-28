@@ -36,13 +36,14 @@ def add_account_backend():
 
 #Adds Account
 def add_account():
-    return """INSERT INTO account(name, 
+    return """INSERT INTO account(id,
+                                 name, 
                                   username,
                                   date_created,
                                   email,
                                   phone,
                                   password)
-              VALUES(%s, %s, CURRENT_DATE, %s, %s, %s)
+              VALUES(%s, %s, %s, CURRENT_DATE, %s, %s, %s)
               ON CONFLICT (username) DO NOTHING"""
 
 #Adds A Following: (account_id now follows follows_id)
@@ -246,7 +247,7 @@ def get_searched_account():
                     username, 
                     (SELECT 1 from following where account_id = %s and follows_id = id) 
             FROM ACCOUNT
-            WHERE username LIKE %s     
+            WHERE LOWER(name) LIKE %s     
             """
 
 #Returns List Of Media With Similar Names
@@ -313,7 +314,8 @@ def get_account_summary():
                     total_followers,
                     total_following,
                     average_review,
-                    average_review - average_expected
+                    average_review - average_expected,
+                    date_created
             FROM ACCOUNT
             WHERE id = %s     
             """
@@ -327,7 +329,9 @@ def get_self_summary():
                     total_reviews, 
                     total_followers,
                     total_following,
-                    (Select AVG(rating) from review where account_id = id)
+                    date_created,
+                    average_review,
+                    average_review - average_expected
             FROM ACCOUNT
             WHERE id = %s     
             """
@@ -398,7 +402,6 @@ def get_account_follows():
     WHERE f.follows_id = %s
     ORDER BY f.date_followed DESC;"""
 
-
 #Returns the list of acccounts that this account is following
 def get_account_following():
     return  """
@@ -412,15 +415,17 @@ def get_account_following():
 #Returns The Most Recent Reviews Made By People This Account Follows
 def get_account_recent():
     return """
-    SELECT t.name AS type_name,
-       g.name AS genre_name,
-       g2.name As genre2_name,
-       g3.name As genre3_name,
-       m.name AS media_name,
-       a.name AS account_name,
-       r.rating,
-       r.rating - m.full_average AS rating_difference,
-       r.description
+    SELECT DISTINCT ON (a.id) 
+           t.name AS type_name,
+           g.name AS genre_name,
+           g2.name AS genre2_name,
+           g3.name AS genre3_name,
+           m.name AS media_name,
+           a.name AS account_name,
+           r.rating,
+           r.rating - m.full_average AS rating_difference,
+           r.description,
+           r.date_reviewed
     FROM review r
     JOIN account a ON r.account_id = a.id
     JOIN media m ON r.media_id = m.id
@@ -433,7 +438,7 @@ def get_account_recent():
         FROM following
         WHERE account_id = %s
     )
-    ORDER BY r.date_reviewed DESC  
+    ORDER BY a.id, r.date_reviewed DESC  
     LIMIT 10;
     """
 

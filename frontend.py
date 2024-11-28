@@ -79,7 +79,9 @@ def signup_page():
         
         #Try To Create Account
         try:
-            cur.execute(sq.add_account(), (name, username, email, phone, password))
+            cur.execute("SELECT MAX(id) from account")
+
+            cur.execute(sq.add_account(), (cur.fetchone()[0] + 1, name, username, email, phone, password))
             conn.commit()
 
             #If Successful
@@ -287,6 +289,8 @@ def account_page():
             st.write(f"**Total Reviews:** {user_details[5]}")
             st.write(f"**Followers:** {user_details[6]}")
             st.write(f"**Following:** {user_details[7]}")
+            st.write(f"**Created:** {user_details[8]}")
+            st.write(f"**Reviews:** {round(user_details[9],1)} ({round(user_details[10],1)}{get_symbol(user_details[10])})")
             submit_update = st.form_submit_button("Save Changes")
 
         #Commit Update
@@ -339,7 +343,7 @@ def other_account_page():
         profile = cur.fetchone()
 
         if profile:
-            user_id, name, username, total_reviews, total_followers, total_following, avg_rating, delta = profile
+            user_id, name, username, total_reviews, total_followers, total_following, avg_rating, delta, datec = profile
             st.markdown("### Profile/Info")
             # Display profile information
             st.markdown(f"- **Name:** {name}")
@@ -347,6 +351,7 @@ def other_account_page():
             st.markdown(f"- **Total Reviews:** {total_reviews}")
             st.markdown(f"- **Followers:** {total_followers}")
             st.markdown(f"- **Following:** {total_following}")
+            st.markdown(f"- **Created:** {datec}")
             if avg_rating: 
                 st.markdown(f"- **Average Rating:** {avg_rating:.1f} ({round(delta,1)}{get_symbol(delta)})")
             else: st.markdown(f"- **Average Rating:** N/A")
@@ -428,7 +433,7 @@ def print_following(following, name, f):
                     st.session_state["current_page"] = "account_profile"
                     st.session_state["selected_account_id"] = foll[0]
             with col22:
-                if st.button(f"Remove:{foll[0]}", key=f"{f}{foll[0]}R"):
+                if st.button(f"Remove:", key=f"{f}{foll[0]}R"):
                     if name == "Following":
                         cur.execute(sq.delete_following(), (st.session_state["user_id"], foll[0]))
                     else:
@@ -499,6 +504,23 @@ def social_page():
     
     cur.execute(sq.get_account_follows(), (account_id,))
     print_following(cur.fetchall(), "Followers", "f")
+
+
+
+    st.write("## Recent Follower Activity")
+    cur.execute(sq.get_account_recent(), (st.session_state["user_id"],))
+    events = cur.fetchall()
+
+    events = sorted(events, key= lambda row: row[9], reverse=True)
+
+    if not events:
+        st.write("No Recent Activity")
+    else:
+        for event in events:
+            st.write(f"On _**{event[9]}**_ _**{event[5]}**_ Reviewed _**{event[4]}**_ A _**{event[6]}** (**{event[7]}{get_symbol(event[7])}**)_ ")
+
+
+
 
 
 
