@@ -18,8 +18,11 @@ def add_media():
                                  studio,
                                  name,
                                  full_average,
-                                 total_reviews) 
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                 total_reviews,
+                                 description,
+                                 popularity,
+                                 language) 
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                ON CONFLICT (id) DO NOTHING;"""
 
 def add_account_backend():
@@ -296,7 +299,10 @@ def get_media_genre_names():
                     media.full_average, 
                     media.total_reviews,
                     media.studio,
-                    media.producer
+                    media.producer,
+                    media.description,
+                    media.popularity,
+                    media.language
             FROM media
             JOIN type ON media.type = type.id
             LEFT JOIN genre AS genre ON media.genre = genre.id

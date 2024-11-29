@@ -22,6 +22,9 @@ CREATE TABLE media (
     name VARCHAR(150),
     full_average REAL DEFAULT 0,
     total_reviews INT DEFAULT 0,
+    description VARCHAR(1000),
+    popularity REAL,
+    language VARCHAR(10),
 
     FOREIGN KEY (type) REFERENCES type(id),
     FOREIGN KEY (genre) REFERENCES genre(id),

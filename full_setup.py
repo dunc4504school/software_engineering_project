@@ -131,7 +131,10 @@ def add_media(path):
                     first_studio_name, 
                     unicodedata.normalize("NFKC", row['title']),
                     row['vote_average'],
-                    row['vote_count']
+                    row['vote_count'],
+                    row['overview'],
+                    row['popularity'],
+                    row['original_language']
         ))
         conn.commit()
             

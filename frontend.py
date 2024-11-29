@@ -79,6 +79,7 @@ def signup_page():
         
         #Try To Create Account
         try:
+        #if True:
             cur.execute("SELECT MAX(id) from account")
 
             cur.execute(sq.add_account(), (cur.fetchone()[0] + 1, name, username, email, phone, password))
@@ -331,7 +332,13 @@ def print_account_reviews(reviews):
 
 #Account Page (Other)
 def other_account_page():
+
     scroll()
+
+    if st.button("⬅️ Back to Social"):
+        st.session_state["current_page"] = "social"
+        st.rerun()
+
     st.title("👤 View User Profile")
 
     # Fetch and display profile details
@@ -372,7 +379,14 @@ def other_account_page():
 #Media Page
 def media_page():
     scroll()
-    movie = get_movie_details(st.session_state["selected_movie_id"])  
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(sq.get_media_genre_names(), (st.session_state["selected_movie_id"],))
+    result = cur.fetchone()
+    cur.close()
+    conn.close()
 
     # Back to Search Button
     if st.button("⬅️ Back to Search"):
@@ -380,17 +394,20 @@ def media_page():
         st.rerun()
 
     # Display Movie Details
-    if movie:  # Ensure movie is not None
-        st.title(movie['Name'])  # Use the dictionary key 'Name'
+    if st.session_state["selected_movie_id"]:  # Ensure movie is not None
+        st.title(result[1])  # Use the dictionary key 'Name'
 
         # Display other movie details
-        st.write(f"🎥 **Type**: {movie['Type']}")
-        st.write(f"🎭 **Genres**: {movie['Genres']}")
-        st.write(f"📅 **Release Date**: {movie['Release']}")
-        st.write(f"⭐ **Average Rating**: {movie['Average Rating']:.1f}")
-        st.write(f"👥 **Total Reviews**: {movie['Total Reviews']}")
-        st.write(f"🎬 **Studio**: {movie['Studio']}")
-        st.write(f"🎞️ **Producer**: {movie['Producer']}")
+        st.write(f"🎥 **Type**: {result[2]}")
+        st.write(f"🎭 **Genres**: {', '.join([str(result[i]) for i in range(3, 6) if result[i]])}")
+        st.write(f"📅 **Release Date**: {pd.to_datetime(result[6]).strftime('%B %d, %Y')}")
+        st.write(f"⭐ **Average Rating**: {result[7]}")
+        st.write(f"👥 **Total Reviews**: {result[8]}")
+        st.write(f"🎬 **Studio**: {result[9]}")
+        st.write(f"🎞️ **Producer**: {result[10]}")
+        st.write(f"🧑‍🧑‍🧒 **Popularity**: {result[12]}")
+        st.write(f"🛂 **Language**: {result[13]}")
+        st.write(f"⏩ **Description**: {result[11]}")
 
         # Write a Review Button
         if st.button("✍️ Write a Review"):
@@ -574,24 +591,9 @@ def search_movies(query):
 # Function to fetch movie details
 def get_movie_details(movie_id):
     try:
-        conn = get_connection()
-        cur = conn.cursor()
-        sql = sq.get_media_genre_names()
-        cur.execute(sql, (movie_id,))
-        result = cur.fetchone()
-        cur.close()
-        conn.close()
+        
          
         if result:
-            movie = result[0]  # ID
-            movie_name = result[1]  # Name
-            movie_type = result[2]  # Type
-            movie_genres = ', '.join([str(result[i]) for i in range(3, 6) if result[i]])  # Join all non-null genres
-            release_date = pd.to_datetime(result[6]).strftime('%B %d, %Y')
-            avg_rating = result[7]  # Average Rating
-            total_reviews = result[8]  # Total Reviews
-            studio = result[9]
-            producer = result[10]
             
             return {
                 "ID": movie,
@@ -602,7 +604,10 @@ def get_movie_details(movie_id):
                 "Average Rating": avg_rating,
                 "Total Reviews": total_reviews,
                 "Studio": studio,
-                "Producer": producer
+                "Producer": producer,
+                "Description": description,
+                "Popularity": popularity,
+                "Language": language
             }
         return None
     except Exception as e:
