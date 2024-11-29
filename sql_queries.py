@@ -21,8 +21,9 @@ def add_media():
                                  total_reviews,
                                  description,
                                  popularity,
-                                 language) 
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                 language,
+                                 adult) 
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                ON CONFLICT (id) DO NOTHING;"""
 
 def add_account_backend():
@@ -33,8 +34,9 @@ def add_account_backend():
                                   date_created,
                                   email,
                                   phone,
-                                  password)
-              VALUES(%s, %s, %s, %s, %s, %s, %s)
+                                  password,
+                                  age)
+              VALUES(%s, %s, %s, %s, %s, %s, %s, %s)
               ON CONFLICT (username) DO NOTHING"""
 
 #Adds Account
@@ -302,7 +304,8 @@ def get_media_genre_names():
                     media.producer,
                     media.description,
                     media.popularity,
-                    media.language
+                    media.language,
+                    adult
             FROM media
             JOIN type ON media.type = type.id
             LEFT JOIN genre AS genre ON media.genre = genre.id
@@ -337,7 +340,8 @@ def get_self_summary():
                     total_following,
                     date_created,
                     average_review,
-                    average_review - average_expected
+                    average_review - average_expected,
+                    age
             FROM ACCOUNT
             WHERE id = %s     
             """

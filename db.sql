@@ -25,6 +25,7 @@ CREATE TABLE media (
     description VARCHAR(1000),
     popularity REAL,
     language VARCHAR(10),
+    adult BOOLEAN,
 
     FOREIGN KEY (type) REFERENCES type(id),
     FOREIGN KEY (genre) REFERENCES genre(id),
@@ -40,6 +41,7 @@ CREATE TABLE account (
     email VARCHAR(50),
     phone VARCHAR(10),
     password VARCHAR(30),
+    age INT,
     total_reviews INT DEFAULT 0,
     average_review REAL DEFAULT 0,
     average_expected REAL DEFAULT 0,

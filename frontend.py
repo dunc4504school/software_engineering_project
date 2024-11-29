@@ -19,8 +19,8 @@ def get_connection():
     return psycopg2.connect(
         host="localhost",       # Your database host
         database="cp317_db",    # Your database name
-        user="heslip",       # Your database username
-        password="pass123" # Your database password
+        user="postgres",       # Your database username
+        password="password" # Your database password
     )
 
 # Create connection and cursor for DB
@@ -81,13 +81,14 @@ def signup_page():
         try:
         #if True:
             cur.execute("SELECT MAX(id) from account")
-
-            cur.execute(sq.add_account(), (cur.fetchone()[0] + 1, name, username, email, phone, password))
+            index = cur.fetchone()[0] + 1
+            cur.execute(sq.add_account(), (index, name, username, email, phone, password))
             conn.commit()
 
             #If Successful
             if cur.rowcount > 0:
                 st.success("Account created successfully! Redirecting to login...")
+                st.session_state["new_id"] = index
                 st.session_state["current_page"] = "create_account"
                 st.rerun()
             #If Unsuccessfull
@@ -124,6 +125,7 @@ def login_page():
                 st.success("Login successful! Redirecting to homepage...")
                 st.session_state["user_id"] = user_id
                 st.session_state["username"] = username
+
                 st.session_state["current_page"] = "homepage"
             #Fails
             else:
@@ -136,7 +138,7 @@ def create_account_page():
     st.title("🎬 Welcome to Movie Recommendation System!")
     st.subheader("Create Your Account")
 
-    username = st.session_state.get("username", "User")
+    username = st.session_state.get("user_id", "User")
     email = st.session_state.get("email", "N/A")
 
     st.write(f"Hello, **{username}**!")
@@ -155,6 +157,8 @@ def create_account_page():
             st.error("You must agree to the terms and conditions.")
         else:
             st.success("Account creation successful!")
+            cur.execute("UPDATE account SET age = %s where id = %s", (age, st.session_state["new_id"],))
+            conn.commit()
             st.session_state["current_page"] = "login"
 
 # Homepage
@@ -287,6 +291,7 @@ def account_page():
             new_username = st.text_input("Username(shown)", value=user_details[2])
             new_phone = st.text_input("Phone Number(not shown)", value=user_details[3])
             new_email = st.text_input("Email(not shown)", value=user_details[4])
+            new_age = st.text_input("Age(not shown)", value=user_details[11])
             st.write(f"**Total Reviews:** {user_details[5]}")
             st.write(f"**Followers:** {user_details[6]}")
             st.write(f"**Following:** {user_details[7]}")
@@ -298,10 +303,10 @@ def account_page():
         if submit_update:
             try:
                 cur.execute(""" UPDATE account 
-                        SET name = %s, username = %s, phone = %s, email = %s
+                        SET name = %s, username = %s, phone = %s, email = %s, age = %s
                         WHERE id = %s
                     """,
-                    (new_name, new_username, new_phone, new_email, account_id),
+                    (new_name, new_username, new_phone, new_email, new_age, account_id),
                 )
                 conn.commit()
                 st.success("Profile updated successfully!")
@@ -387,51 +392,62 @@ def media_page():
 
     cur.execute(sq.get_media_genre_names(), (st.session_state["selected_movie_id"],))
     result = cur.fetchone()
-    cur.close()
-    conn.close()
 
     # Back to Search Button
     if st.button("⬅️ Back to Search"):
         st.session_state["current_page"] = "search"
         st.rerun()
 
+    st.title("👤 View Media Profile")
+
     # Display Movie Details
     if st.session_state["selected_movie_id"]:  # Ensure movie is not None
-        st.title(result[1])  # Use the dictionary key 'Name'
+        
+        #Obtain The Age Of This User
+        cur.execute("SELECT age from account where id = %s", (st.session_state["user_id"]))
+        age = cur.fetchone()[0]
+        #If Age Is Less Then 14 and Adult
+        if age <= 14 and result[14]:
+            st.write("SORRY THIS MEDIA NOT AVAILABLE FOR YOUTH ACCOUNT")
 
-        # Display other movie details
-        st.write(f"🎥 **Type**: {result[2]}")
-        st.write(f"🎭 **Genres**: {', '.join([str(result[i]) for i in range(3, 6) if result[i]])}")
-        st.write(f"📅 **Release Date**: {pd.to_datetime(result[6]).strftime('%B %d, %Y')}")
-        st.write(f"⭐ **Average Rating**: {result[7]}")
-        st.write(f"👥 **Total Reviews**: {result[8]}")
-        st.write(f"🎬 **Studio**: {result[9]}")
-        st.write(f"🎞️ **Producer**: {result[10]}")
-        st.write(f"🧑‍🧑‍🧒 **Popularity**: {result[12]}")
-        st.write(f"🛂 **Language**: {result[13]}")
-        st.write(f"⏩ **Description**: {result[11]}")
+        else:
+            # Display other movie details
+            st.write(f"🎥 **Type**: {result[2]}")
+            st.write(f"🎭 **Genres**: {', '.join([str(result[i]) for i in range(3, 6) if result[i]])}")
+            st.write(f"📅 **Release Date**: {pd.to_datetime(result[6]).strftime('%B %d, %Y')}")
+            st.write(f"⭐ **Average Rating**: {result[7]}")
+            st.write(f"👥 **Total Reviews**: {result[8]}")
+            st.write(f"🎬 **Studio**: {result[9]}")
+            st.write(f"🎞️ **Producer**: {result[10]}")
+            st.write(f"🧑‍🧑‍🧒 **Popularity**: {result[12]}")
+            st.write(f"🛂 **Language**: {result[13]}")
+            st.write(f"🎲 **Adult**: {result[14]}")
+            st.write(f"⏩ **Description**: {result[11]}")
 
-        # Write a Review Button
-        if st.button("✍️ Write a Review"):
-            st.session_state["current_page"] = "reviews"  # Redirect to review page
-            st.session_state["selected_media_name"] = movie['Name']            
-            st.rerun()
+            # Write a Review Button
+            if st.button("✍️ Write a Review"):
+                st.session_state["current_page"] = "reviews"  # Redirect to review page
+                st.session_state["selected_media_name"] = movie['Name']            
+                st.rerun()
 
-        # Fetch and Display Recent Reviews
-        st.subheader("📝 Recent Reviews By Following (expand)")
-        try:
-            conn = get_connection()  # Establish database connection
-            cur = conn.cursor()
+            # Fetch and Display Recent Reviews
+            st.subheader("📝 Recent Reviews By Following (expand)")
+            try:
+                conn = get_connection()  # Establish database connection
+                cur = conn.cursor()
 
-            cur.execute(sq.get_media_reviews(), (st.session_state["selected_movie_id"],st.session_state["user_id"]))
-            print_media_reviews(cur.fetchall())
+                cur.execute(sq.get_media_reviews(), (st.session_state["selected_movie_id"],st.session_state["user_id"]))
+                print_media_reviews(cur.fetchall())
 
-            cur.close()
-            conn.close()
-        except Exception as e:
-            st.error(f"An error occurred while fetching reviews: {e}")
+                cur.close()
+                conn.close()
+            except Exception as e:
+                st.error(f"An error occurred while fetching reviews: {e}")
     else:
         st.error(f"Movie details not found.")
+
+    cur.close()
+    conn.close()
 
 #Prints List Of Media Reviews (From Following)
 def print_media_reviews(reviews):

@@ -18,8 +18,8 @@ from datetime import datetime, date
 conn = psycopg2.connect(
     host="localhost",
     database='cp317_db',
-    user='heslip',   #Modify To Your User
-    password='pass123',  #Modify To Your Password
+    user='postgres',   #Modify To Your User
+    password='password',  #Modify To Your Password
     options="-c client_encoding=UTF8"
 )
 cur = conn.cursor()
@@ -95,9 +95,10 @@ def setup_accounts(accounts):
         lname = random.choice(last_names)
         user = f"{fname[0]}{lname}{random.randint(100, 999)}"
         date_to = date(2024, 10, random.randint(1,30))
+        age = random.randint(18,24)
         
         cur.execute(sq.add_account_backend(), 
-                    (f"{fname} {lname}", row.userId, user, date_to, "TEST", "TEST", "TEST"))
+                    (f"{fname} {lname}", row.userId, user, date_to, "TEST", "TEST", "TEST", age))
     conn.commit()
 
 def add_media(path):
@@ -134,7 +135,8 @@ def add_media(path):
                     row['vote_count'],
                     row['overview'],
                     row['popularity'],
-                    row['original_language']
+                    row['original_language'],
+                    row['adult']
         ))
         conn.commit()
             
@@ -172,19 +174,12 @@ def add_testing(av):
     conn.commit()  
 
     #Duplicate Name
-    cur.execute("""
-        UPDATE ACCOUNT set username = %s where id = 7
-    """, ("movielover21",))
+    cur.execute("""UPDATE ACCOUNT set username = %s where id = 7""", ("movielover21",))
     conn.commit()
-
     #Demonstration Data Account
-    cur.execute("""
-        UPDATE ACCOUNT set name = %s, username = %s, date_created = %s, email = %s, phone = %s, password = %s
-        WHERE id = %s
-    """, 
-    ("John Testing", "JT123", "2024-11-01", "JT123@gmail.com", "9021101234", "password",6))
+    cur.execute("""UPDATE ACCOUNT set name = %s, username = %s, date_created = %s, email = %s, phone = %s, password = %s
+        WHERE id = %s""", ("John Testing", "JT123", "2024-11-01", "JT123@gmail.com", "9021101234", "password",6))
     conn.commit()
-
     #Add Reviews For Le Mis Of Friends (Might Break - Rerun)
     cur.execute(""" SELECT follows_id from following where account_id = %s""", (6,))
     follower_ids = cur.fetchall()
@@ -192,8 +187,9 @@ def add_testing(av):
     cur.execute(sq.add_review_backend(), (follower_ids[1], 4415, 9.7, "TEST", "2024-11-08", 4415, follower_ids[1]))
     cur.execute(sq.add_review_backend(), (follower_ids[2], 4415, 9.2, "TEST", "2024-11-12", 4415, follower_ids[2]))
     cur.execute(sq.add_review_backend(), (follower_ids[3], 4415, 8.9, "TEST", "2024-11-30", 4415, follower_ids[3]))
+    #Setting "Silence Of The Lambs" to Adult For Easy Exampe
+    cur.execute("UPDATE media set adult = TRUE where id = %s", (274,))
     conn.commit()
-
 
 
 
