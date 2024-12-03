@@ -556,3 +556,112 @@ def setup_account_ids():
         from account;
     
     """
+
+def recommend_movies_user(user_id):
+    return """
+        WITH user_review_stats AS (
+            -- Calculate how often the user reviews each genre and studio
+            SELECT 
+                m.genre,
+                m.genre2,
+                m.genre3,
+                m.studio,
+                COUNT(*) AS genre_count,
+                COUNT(*) FILTER (WHERE m.studio IS NOT NULL) AS studio_count
+            FROM 
+                review r
+            JOIN 
+                media m ON r.media_id = m.id
+            WHERE 
+                r.account_id = %s
+            GROUP BY 
+                m.genre, m.genre2, m.genre3, m.studio
+        ),
+        ranked_movies AS (
+            -- Assign a weighted score to each movie based on user preferences
+            SELECT 
+                m.id,
+                m.name AS movie_name,
+                g.name AS genre_name,
+                m.popularity,
+                m.language,
+                m.total_reviews,
+                m.studio,
+                COALESCE(urs.genre_count, 0) AS genre_weight,
+                COALESCE(urs.studio_count, 0) AS studio_weight,
+                -- Calculate a weighted score considering all genres and studio preferences
+                (COALESCE(urs.genre_count, 0) * 0.6) +
+                (COALESCE(urs.studio_count, 0) * 0.4) AS weighted_score
+            FROM 
+                media m
+            JOIN 
+                genre g ON m.genre = g.id
+            LEFT JOIN 
+                user_review_stats urs 
+                ON m.genre = urs.genre OR m.genre2 = urs.genre OR m.genre3 = urs.genre
+                OR m.studio = urs.studio
+            WHERE 
+                m.id NOT IN (
+                    SELECT r.media_id 
+                    FROM review r 
+                    WHERE r.account_id = %s
+                ) -- Exclude movies the user has already reviewed
+                AND m.popularity > 5 -- Adjust threshold for popularity
+        )
+        SELECT 
+            movie_name, 
+            genre_name, 
+            popularity, 
+            language, 
+            total_reviews, 
+            studio
+        FROM 
+            ranked_movies
+        ORDER BY 
+            weighted_score DESC
+        LIMIT 12;
+    """
+
+
+def recommend_movies_followed(user_id):
+    return """
+        SELECT 
+            m.name AS movie_name,
+            g.name AS genre_name,
+            m.popularity,
+            m.language,
+            m.total_reviews,
+            m.studio
+        FROM 
+            following f
+        JOIN 
+            review r ON f.follows_id = r.account_id
+        JOIN 
+            media m ON r.media_id = m.id
+        JOIN 
+            genre g ON m.genre = g.id
+        WHERE 
+            f.account_id = %s
+            AND r.rating >= 4 -- Consider only highly-rated movies
+        ORDER BY 
+            r.rating DESC, m.popularity DESC
+        LIMIT 12;
+    """
+
+def most_reviewed():
+    return """
+        SELECT
+            m.name AS movie_name,
+            g.name AS genre_name,
+            m.popularity,
+            m.language,
+            m.total_reviews,
+            m.studio
+        FROM 
+            media m
+        JOIN
+            genre g ON m.genre = g.id
+        ORDER BY
+            m.total_reviews DESC
+        LIMIT 3;
+    """

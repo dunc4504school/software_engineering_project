@@ -2,6 +2,8 @@ import streamlit as st
 import psycopg2
 import pandas as pd
 import sql_queries as sq
+import base64
+import os
 
 # Set page configuration
 st.set_page_config(page_title="Movie System", page_icon="🎥")
@@ -19,8 +21,8 @@ def get_connection():
     return psycopg2.connect(
         host="localhost",       # Your database host
         database="cp317_db",    # Your database name
-        user="postgres",       # Your database username
-        password="password" # Your database password
+        user="heslip",       # Your database username
+        password="pass123" # Your database password
     )
 
 # Create connection and cursor for DB
@@ -43,10 +45,52 @@ def scroll():
 
 
 # Welcome Page (*)
-def welcome_page():
+import streamlit as st
+import base64
+import os
 
+# Function to encode the image as base64
+def get_img_as_base64(file):
+    with open(file, "rb") as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+# Ensure the image path is correct
+def add_background(background):
+    background = "background.png"
+    if not os.path.exists(background):
+        st.error("Image file not found! Ensure the file path is correct.")
+    else:
+        img = get_img_as_base64(background)
+
+        # Apply CSS for background image
+        page_bg_img = f"""
+                <style>
+                [data-testid="stAppViewContainer"] {{
+                    background-image: url("data:image/jpeg;base64,{img}");
+                    background-position: center; 
+                    background-repeat: no-repeat;
+                    background-size: cover;
+                    background-attachment: fixed;
+                    image-rendering: crisp-edges; 
+                    -webkit-backface-visibility: hidden;
+                }}
+
+                [data-testid="stHeader"] {{
+                    background: rgba(0,0,0,0);
+                }}
+
+                [data-testid="stToolbar"] {{
+                    right: 2rem;
+                }}
+                </style>
+            """
+        st.markdown(page_bg_img, unsafe_allow_html=True)
+
+def welcome_page():
+    add_background("background.png")
     #Photo
-    st.image("logo2.jpg", caption=None, width=600, use_container_width=False)
+    st.image("logo.png", caption=None, width=600, use_container_width=False)
     col1, col2, col3 = st.columns([1, 1, 2]) 
 
     #Sign Up
@@ -61,6 +105,8 @@ def welcome_page():
     
 # SignUp Page (*)
 def signup_page():
+
+    add_background("background.png")
     st.title("📝 Sign Up")
     
     # Collect user input
@@ -101,6 +147,8 @@ def signup_page():
 
 # Login Page (*)
 def login_page():
+
+    add_background("background.png")
     st.title("Login Page")
 
     if st.button("⬅️ Back to Welcome Page"):
@@ -133,6 +181,12 @@ def login_page():
         else:
             st.warning("Please enter both username and password.")
 
+def fetch_account_id():
+    account_id =  st.session_state.get("user_id")
+    if account_id is None:
+        st.warning("You need to log in to access the account page.")
+        return account_id
+
 # Create Account Page (*)
 def create_account_page():
     st.title("🎬 Welcome to Movie Recommendation System!")
@@ -163,24 +217,29 @@ def create_account_page():
 
 # Homepage
 def homepage():
+
+    add_background("background.png")
     account_id = st.session_state.get("user_id")
-    # Add a title with an icon
+    # Add an image banner
+    st.image(
+        "banner.png",
+        width=2000,
+        use_container_width=True
+    )
+
     st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Rock+Salt&display=swap');
+    </style>
     <div style="text-align: center;">
-        <h1 style="color: #4CAF50; font-size: 3rem;">🎉 Welcome to Your Homepage!</h1>
-        <p style="font-size: 1.2rem; color: #555;">Navigate through our features and find what you're looking for.</p>
+        <p style="font-family: 'Rock Salt', cursive; font-size: 1.6rem; color: black;">
+            Explore, discover and share a world of movies
+        </p>
     </div>
     """, unsafe_allow_html=True)
 
-    # Add an image banner
-    st.image(
-        "https://via.placeholder.com/800x200.png?text=Your+Movie+Recommendation+System",
-        use_container_width=True,
-        caption="Explore Reviews, Manage Your Account, Connect Socially, and Search for Movies!"
-    )
-
     # Display the four options as buttons in a grid layout
-    col1, col2,col3 = st.columns(3)
+    col1, col2, col3 = st.columns([1, 0.8,0.65])
 
     with col1:
         if st.button("👤 Manage Account", help="Manage your account settings and preferences."):
@@ -204,11 +263,29 @@ def homepage():
             st.session_state["current_page"] = "welcome"
             st.success("You have been logged out.")
 
-    get_movie_recommendations(account_id)
+    st.markdown(" ")
+    st.markdown(" ")
+    st.markdown(" ")
+    st.markdown(" ")
+
+    st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Rock+Salt&display=swap');
+    </style>
+    <div style="text-align: center;">
+        <p style="font-family: 'Rock Salt', cursive; font-size: 1.6rem; color: black;">
+            What's Trending?
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    top_rated = fetch_most_reviewed()
+    display_movies_horizontally(top_rated)
 
 
 #Reviews Page
 def reviews_page():
+    add_background("background.png")
+
     # Ensure account_id is retrieved from session state
     account_id = st.session_state.get("user_id")
 
@@ -249,7 +326,8 @@ def reviews_page():
                 conn.commit()
                 cur.close()
                 conn.close()
-                st.session_state["current_page"] = "account"
+                st.success("Review submitted successfully!")
+                #st.session_state["current_page"] = "account"
                 return
             except Exception as e:
                 st.error(f"An error occurred while submitting your review: {e}")
@@ -259,6 +337,7 @@ def reviews_page():
 
 #Account Page (Our)
 def account_page():
+    add_background("background.png")
     scroll()
     if st.button("⬅️ Back to Homepage"):
         st.session_state["current_page"] = "homepage"
@@ -337,6 +416,7 @@ def print_account_reviews(reviews):
 
 #Account Page (Other)
 def other_account_page():
+    add_background("background.png")
     scroll()
 
     if st.button("⬅️ Back to Homepage"):
@@ -385,6 +465,7 @@ def other_account_page():
 
 #Media Page
 def media_page():
+    add_background("background.png")
     scroll()
 
     conn = get_connection()
@@ -398,8 +479,6 @@ def media_page():
         st.session_state["current_page"] = "search"
         st.rerun()
 
-    st.title("👤 View Media Profile")
-
     # Display Movie Details
     if st.session_state["selected_movie_id"]:  # Ensure movie is not None
         
@@ -412,6 +491,7 @@ def media_page():
 
         else:
             # Display other movie details
+            st.markdown(f"<h1 style='font-weight: bold;'>{result[1]}</h1>", unsafe_allow_html=True)
             st.write(f"🎥 **Type**: {result[2]}")
             st.write(f"🎭 **Genres**: {', '.join([str(result[i]) for i in range(3, 6) if result[i]])}")
             st.write(f"📅 **Release Date**: {pd.to_datetime(result[6]).strftime('%B %d, %Y')}")
@@ -423,6 +503,9 @@ def media_page():
             st.write(f"🛂 **Language**: {result[13]}")
             st.write(f"🎲 **Adult**: {result[14]}")
             st.write(f"⏩ **Description**: {result[11]}")
+
+            image_url = "https://image.tmdb.org/t/p/w500/1E5baAaEse26fej7uHcjOgEE2t2.jpg"
+            st.image(image_url, caption="Movie Poster", use_column_width=True)
 
             # Write a Review Button
             if st.button("✍️ Write a Review"):
@@ -479,6 +562,7 @@ def print_following(following, name, f):
 
 #SOCIAL PAGE
 def social_page():
+    add_background("background.png")
     if st.button("⬅️ Back to Homepage"):
         st.session_state["current_page"] = "homepage"
 
@@ -561,6 +645,7 @@ def social_page():
 
 #SEARCH PAGE
 def search_page():
+    add_background("background.png")
     st.title("🔍 Search for Movies")
 
     if st.button("Back to Homepage"):
@@ -749,6 +834,143 @@ def get_movie_recommendations(user_id):
             conn.close()
 
 
+# Function to fetch recommended movies based on user preferences
+def fetch_user_reccomendations(account_id):
+
+    account_id =  st.session_state.get("user_id")
+    if account_id is None:
+        st.warning("You need to log in to access the account page.")
+        return
+
+    query = sq.recommend_movies_user(account_id)
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(query, (account_id, account_id))
+            results = cur.fetchall()
+        return results
+    finally:
+        conn.close()
+
+# Function to fetch recommended movies based on followed accounts
+def fetch_following_reccomendations(account_id):
+
+    account_id =  st.session_state.get("user_id")
+    if account_id is None:
+        st.warning("You need to log in to access the account page.")
+        return
+
+    query = sq.recommend_movies_followed(account_id)
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(query, (account_id))
+            results = cur.fetchall()
+        return results
+    finally:
+        conn.close()
+
+def fetch_most_reviewed():
+    query = sq.most_reviewed()
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(query)
+            results = cur.fetchall()
+        return results
+    finally:
+        conn.close()
+
+def reccomendations_page():
+    add_background("background.png")
+    if st.button("⬅️ Back to Homepage"):
+        st.session_state["current_page"] = "homepage"
+    
+    account_id = st.session_state.get("user_id")
+    if account_id is None:
+        st.warning("You need to log in to access the account page.")
+        return
+    
+    st.title("🎥 Movie Recommendation System")
+
+    # Recommendations based on reviews
+    user_recommendations = fetch_user_reccomendations(account_id)
+    if user_recommendations:
+        st.subheader("Movies Recommended for You:")
+        display_movies_horizontally(user_recommendations)
+    else:
+        st.write("No recommendations found for your reviews.")
+
+    st.markdown(" ")
+    st.markdown(" ")
+    st.markdown(" ")
+    st.markdown(" ")
+    st.markdown(" ")
+
+    # Recommendations based on followed accounts
+    followed_recommendations = fetch_following_reccomendations(account_id)
+    if followed_recommendations:
+        st.subheader("Movies Recommended Based on Followed Accounts:")
+        display_movies_horizontally(followed_recommendations)
+    else:
+        st.write("No recommendations found based on followed accounts.")
+
+def display_movies_horizontally(movies):
+    """
+    Display multiple movies in a horizontal layout using Streamlit columns.
+    """
+    num_columns = 3  # Number of movies per row
+    for i in range(0, len(movies), num_columns):
+        cols = st.columns(num_columns)
+        for col, movie in zip(cols, movies[i:i + num_columns]):
+            with col:
+                display_movie_card(movie)
+
+def display_movie_card(movie):
+    """
+    Display a single movie recommendation in a compact card-like format with a white background.
+    """
+    movie_name, genre, popularity, language, total_reviews, studio = movie
+
+    # Define the card style
+    card_style = """
+    <style>
+        .movie-card {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Add shadow for depth */
+        }
+        .movie-card h1 {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .movie-card p {
+            margin: 5px 0;
+        }
+    </style>
+    """
+
+    # Inject CSS
+    st.markdown(card_style, unsafe_allow_html=True)
+
+    # Create the card content
+    card_content = f"""
+    <div class="movie-card">
+        <h1>{movie_name}</h1>
+        <p><strong>Genre:</strong> {genre}</p>
+        <p><strong>Popularity:</strong> {popularity}</p>
+        <p><strong>Language:</strong> {language}</p>
+        <p><strong>Total Reviews:</strong> {total_reviews}</p>
+        <p><strong>Studio:</strong> {studio}</p>
+    </div>
+    """
+
+    # Render the card
+    st.markdown(card_content, unsafe_allow_html=True)
+
 
 
 # Add custom CSS for background and buttons
@@ -759,8 +981,8 @@ st.markdown("""
         color: #444;
     }
     button {
-        background-color: #ff7f50;
-        color: white;
+        background-color: orange;
+        color: orange;
         border: none;
         padding: 10px 20px;
         border-radius: 5px;
@@ -772,8 +994,6 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
-
-
 
 #Welcome Page
 if st.session_state["current_page"] == "welcome":
@@ -804,8 +1024,8 @@ elif st.session_state["current_page"] == "account":
     account_page()
 
 #Reccomendations
-elif st.session_state["current_page"] == "recommendation":
-    recommendation_page()
+elif st.session_state["current_page"] == "reccomendations":
+    reccomendations_page()
 
 #Social
 elif st.session_state["current_page"] == "social":
