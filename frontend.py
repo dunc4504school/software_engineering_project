@@ -105,6 +105,8 @@ def welcome_page():
     
 # SignUp Page (*)
 def signup_page():
+    if st.button("⬅️ Back to Welcome Page"):
+        st.session_state["current_page"] = "welcome"
 
     add_background("background.png")
     st.title("📝 Sign Up")
@@ -112,6 +114,7 @@ def signup_page():
     # Collect user input
     name = st.text_input("Full Name")
     username = st.text_input("Username")
+    age = st.number_input("Age", min_value=0, max_value=150, value=0, step=1)
     email = st.text_input("Email")
     phone = st.text_input("Phone Number")
     password = st.text_input("Password", type="password")
@@ -128,14 +131,14 @@ def signup_page():
         #if True:
             cur.execute("SELECT MAX(id) from account")
             index = cur.fetchone()[0] + 1
-            cur.execute(sq.add_account(), (index, name, username, email, phone, password))
+            cur.execute(sq.add_account(), (index, name, username, age, email, phone, password))
             conn.commit()
 
             #If Successful
             if cur.rowcount > 0:
                 st.success("Account created successfully! Redirecting to login...")
                 st.session_state["new_id"] = index
-                st.session_state["current_page"] = "create_account"
+                st.session_state["current_page"] = "login"
                 st.rerun()
             #If Unsuccessfull
             else:
@@ -186,34 +189,6 @@ def fetch_account_id():
     if account_id is None:
         st.warning("You need to log in to access the account page.")
         return account_id
-
-# Create Account Page (*)
-def create_account_page():
-    st.title("🎬 Welcome to Movie Recommendation System!")
-    st.subheader("Create Your Account")
-
-    username = st.session_state.get("user_id", "User")
-    email = st.session_state.get("email", "N/A")
-
-    st.write(f"Hello, **{username}**!")
-    st.write(f"We've recorded your email as **{email}**.")
-
-    # Unique form key
-    with st.form(key="profile_form_unique"):
-        favorite_genre = st.selectbox("What's your favorite movie genre?", 
-                                      ["Action", "Comedy", "Drama", "Horror", "Sci-Fi", "Romance"])
-        age = st.number_input("Your Age", min_value=10, max_value=100, step=1)
-        agree_terms = st.checkbox("I agree to the terms and conditions.")
-        submit_button = st.form_submit_button("Complete Registration")
-
-    if submit_button:
-        if not agree_terms:
-            st.error("You must agree to the terms and conditions.")
-        else:
-            st.success("Account creation successful!")
-            cur.execute("UPDATE account SET age = %s where id = %s", (age, st.session_state["new_id"],))
-            conn.commit()
-            st.session_state["current_page"] = "login"
 
 # Homepage
 def homepage():
@@ -671,9 +646,6 @@ def search_page():
                     st.session_state["current_page"] = "movie_profile"
                     st.rerun()
 
-    # Global Recommendations Section
-    get_movie_recommendations(account_id)
-
 
 def search_movies(query):
     sql = sq.search_movies_by_attributes()
@@ -716,122 +688,6 @@ def get_movie_details(movie_id):
     except Exception as e:
         st.error(f"Error fetching movie details: {e}")
         return None
-
-
-
-
-def get_movie_recommendations(user_id):
-    try:
-        # SQL Query to get 5 movie recommendations based on user preferences
-        recommendation_query = """
-        SELECT DISTINCT 
-            m.id, 
-            m.name, 
-            g.name AS genre1, 
-            g2.name AS genre2, 
-            g3.name AS genre3, 
-            t.name AS type_name, 
-            m.full_average, 
-            m.date_released
-        FROM media m
-        LEFT JOIN genre g ON m.genre = g.id
-        LEFT JOIN genre g2 ON m.genre2 = g2.id
-        LEFT JOIN genre g3 ON m.genre3 = g3.id
-        JOIN type t ON m.type = t.id
-        WHERE (
-            m.genre IN (
-                SELECT m.genre FROM review r
-                JOIN media m ON r.media_id = m.id
-                WHERE r.account_id = %s
-                GROUP BY m.genre
-                ORDER BY AVG(r.rating) DESC
-                LIMIT 3
-            )
-            OR m.genre2 IN (
-                SELECT m.genre2 FROM review r
-                JOIN media m ON r.media_id = m.id
-                WHERE r.account_id = %s
-                GROUP BY m.genre2
-                ORDER BY AVG(r.rating) DESC
-                LIMIT 3
-            )
-            OR m.genre3 IN (
-                SELECT m.genre3 FROM review r
-                JOIN media m ON r.media_id = m.id
-                WHERE r.account_id = %s
-                GROUP BY m.genre3
-                ORDER BY AVG(r.rating) DESC
-                LIMIT 3
-            )
-        )
-        AND m.id NOT IN (
-            SELECT media_id FROM review WHERE account_id = %s
-        )
-        ORDER BY m.full_average DESC, m.date_released DESC
-        LIMIT 3;
-        """
-
-        # Execute the query
-        cur.execute(recommendation_query, (user_id, user_id, user_id, user_id))
-        recommendations = cur.fetchall()
-
-        # Display the recommendations horizontally
-        st.markdown("""
-            <div style="
-                background: #f1f1f1;
-                border-radius: 10px;
-                box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-                margin-bottom: 20px;
-                padding: 20px;
-            ">
-                <h4 style='color: #333;'>Here are some uniquely recommended films :</h4>
-            </div>
-        """, unsafe_allow_html=True)
-
-        if recommendations:
-            # Create columns for displaying movies horizontally
-            columns = st.columns(3)  # Create 5 columns for 5 movies
-
-            for idx, movie in enumerate(recommendations):
-                movie_id, movie_name, genre1, genre2, genre3, type_name, full_average, date_released = movie
-                genres = ", ".join([g for g in [genre1, genre2, genre3] if g])
-
-                # Display each movie in the corresponding column
-                with columns[idx]:
-                    st.markdown(f"""
-                        <div style="
-                            background: white;
-                            border-radius: 10px;
-                            box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.05);
-                            margin-bottom: 15px;
-                            padding: 15px;
-                        ">
-                            <h5 style='color: #222;'>{movie_name}</h5>
-                            <p style='color: #555;'>🎭 Genres: {genres}</p>
-                            <p style='color: #555;'>📺 Type: {type_name}</p>
-                            <p style='color: #555;'>⭐ Average Rating: {full_average:.2f}</p>
-                            <p style='color: #555;'>📅 Released: {date_released.strftime('%Y-%m-%d')}</p>
-                        </div>
-                    """, unsafe_allow_html=True)
-        else:
-            st.markdown("""
-                <div style="
-                    background: white;
-                    border-radius: 10px;
-                    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.05);
-                    padding: 15px;
-                ">
-                    <p style='color: #555;'>No recommendations available at the moment.</p>
-                </div>
-            """, unsafe_allow_html=True)
-
-    except Exception as e:
-        st.error(f"An error occurred while fetching recommendations: {e}")
-    finally:
-        if 'cur' in locals():
-            cur.close()
-        if 'conn' in locals():
-            conn.close()
 
 
 # Function to fetch recommended movies based on user preferences
