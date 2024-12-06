@@ -4,6 +4,7 @@ import pandas as pd
 import sql_queries as sq
 import base64
 import os
+from datetime import date
 
 # Set page configuration
 st.set_page_config(page_title="Movie System", page_icon="🎥")
@@ -42,12 +43,6 @@ def scroll():
         window.scrollTo(0, 0);
     </script>
     """, unsafe_allow_html=True)
-
-
-# Welcome Page (*)
-import streamlit as st
-import base64
-import os
 
 # Function to encode the image as base64
 def get_img_as_base64(file):
@@ -114,39 +109,52 @@ def signup_page():
     # Collect user input
     name = st.text_input("Full Name")
     username = st.text_input("Username")
-    age = st.number_input("Age", min_value=0, max_value=150, value=0, step=1)
+    age = st.number_input("Age", min_value=1, max_value=150, value=18, step=1)
     email = st.text_input("Email")
     phone = st.text_input("Phone Number")
     password = st.text_input("Password", type="password")
     
     #Attempt To Create
     if st.button("Create Account"):
-        #If Not All Info
         if not name or not username or not email or not phone or not password:
             st.error("Please fill out all fields.")
             return
-        
-        #Try To Create Account
+
         try:
-        #if True:
-            cur.execute("SELECT MAX(id) from account")
-            index = cur.fetchone()[0] + 1
-            cur.execute(sq.add_account(), (index, name, username, age, email, phone, password))
+            conn = get_connection()
+            cur = conn.cursor()
+
+            # Check if username already exists
+            cur.execute("SELECT COUNT(*) FROM account WHERE username = %s", (username,))
+            if cur.fetchone()[0] > 0:
+                st.error("Username already exists. Please choose a different one.")
+                return
+
+            # Generate new ID and get today's date
+            cur.execute("SELECT COALESCE(MAX(id), 0) + 1 FROM account")
+            index = cur.fetchone()[0]
+            today = date.today()
+
+            # Insert new account
+            cur.execute(
+                """
+                INSERT INTO account (id, name, username, date_created, email, phone, password, age)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (index, name, username, today, email, phone, password, age)
+            )
             conn.commit()
 
-            #If Successful
             if cur.rowcount > 0:
                 st.success("Account created successfully! Redirecting to login...")
                 st.session_state["new_id"] = index
                 st.session_state["current_page"] = "login"
                 st.rerun()
-            #If Unsuccessfull
             else:
                 st.error("Failed to create account. Please try again.")
-        
-        except:
-            st.error("Error Accessing Database")
 
+        except Exception as e:
+            st.error(f"Database error: {e}")
 
 # Login Page (*)
 def login_page():
@@ -451,7 +459,7 @@ def media_page():
 
     # Back to Search Button
     if st.button("⬅️ Back to Search"):
-        st.session_state["current_page"] = "search"
+        st.session_state["current_page"] = "homepage"
         st.rerun()
 
     # Display Movie Details
@@ -478,9 +486,6 @@ def media_page():
             st.write(f"🛂 **Language**: {result[13]}")
             st.write(f"🎲 **Adult**: {result[14]}")
             st.write(f"⏩ **Description**: {result[11]}")
-
-            image_url = "https://image.tmdb.org/t/p/w500/1E5baAaEse26fej7uHcjOgEE2t2.jpg"
-            st.image(image_url, caption="Movie Poster", use_column_width=True)
 
             # Write a Review Button
             if st.button("✍️ Write a Review"):
