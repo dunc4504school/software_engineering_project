@@ -1,32 +1,37 @@
 
-#ACCOUNT 1:
+#ACCOUNT 1: (Account Creation/Modification)
 
-1. Attempt To Create New Accuont (username: movielover21)
-2. Attempt Fails
-3. Attempt To Create New Account (username: movielover20)
+1. Attempt to Create New Account (username: movielover21)
+2. Fails
+3. Attempt to Create New CHILD Account (username: movielover20)
 4. Attempt Succeeds
 
 5. Go To Account, Demonstrate Modifying A Field
+6. Save Changes
 
-6. Search Accounts (name: Smith)
-7. Click Some Matching Account
-8. Go To That Account
-9. Go Over Fields And Reviews
+7. Go To Social, Demonstrate Searching (name: Smith)
+8. Add To Follower
+9. Then Remove Follower
+10. Click On Account
 
-10. Add This Account As A Follower
+11. Go To Search, Demonstrate (name: Silence of the lambs)
+12. Note Blocked
 
-11. Go To Social Page, Note That Follower Has Been Added
+13. Logout
 
-12. Now Unfollow this person
+#ACCOUNT 2: 
 
-13. Now Go To Reviews, and complete a review
+1. Login (username: JT123, password: password)
 
-#ACCOUNT 2
+2. Go To Search, Demonstrate (name: silence of the lambs)
+3. Click On
 
-1. Sign Into Account (username: JT123, password: password)
+4. Click on Add Reviews
+5. Review Silence of The lambs
 
-2. Go To Account, go over fields
-3. In Account, cover Follower, Following, and click on an account to demonstrate
-4. From Within That Account, Look at their reviews, and click on one of the movies to get more info
+4. In Account, Cover Follower, Following, click on one account
+5. Demonstrate one of their reviews
 
-5. Elaborate On 
+6. Go To Search, Demonstrate (name: Les Mis)
+7. Click On, 
+8. Demonstrate Reviews by Followers

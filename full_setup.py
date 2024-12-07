@@ -18,8 +18,8 @@ from datetime import datetime, date
 conn = psycopg2.connect(
     host="localhost",
     database='cp317_db',
-    user='heslip',   #Modify To Your User
-    password='pass123',  #Modify To Your Password
+    user='postgres',   #Modify To Your User
+    password='password',  #Modify To Your Password
     options="-c client_encoding=UTF8"
 )
 cur = conn.cursor()

@@ -22,8 +22,8 @@ def get_connection():
     return psycopg2.connect(
         host="localhost",       # Your database host
         database="cp317_db",    # Your database name
-        user="heslip",       # Your database username
-        password="pass123" # Your database password
+        user="postgres",       # Your database username
+        password="password" # Your database password
     )
 
 # Create connection and cursor for DB
