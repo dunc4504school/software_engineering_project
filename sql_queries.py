@@ -584,6 +584,7 @@ def recommend_movies_user(user_id):
                 m.name AS movie_name,
                 g.name AS genre_name,
                 m.popularity,
+                r.rating,
                 m.language,
                 m.total_reviews,
                 m.studio,
@@ -596,6 +597,8 @@ def recommend_movies_user(user_id):
                 media m
             JOIN 
                 genre g ON m.genre = g.id
+            JOIN
+                review r ON m.id = r.media_id
             LEFT JOIN 
                 user_review_stats urs 
                 ON m.genre = urs.genre OR m.genre2 = urs.genre OR m.genre3 = urs.genre
@@ -611,7 +614,8 @@ def recommend_movies_user(user_id):
         SELECT 
             movie_name, 
             genre_name, 
-            popularity, 
+            popularity,
+            rating, 
             language, 
             total_reviews, 
             studio
@@ -622,29 +626,32 @@ def recommend_movies_user(user_id):
         LIMIT 12;
     """
 
-
 def recommend_movies_followed(user_id):
     return """
-        SELECT 
+       SELECT
             m.name AS movie_name,
-            g.name AS genre_name,
-            m.popularity,
-            m.language,
-            m.total_reviews,
-            m.studio
+            MAX(g.name) AS genre_name,           -- Get the genre name (use MAX for a single value)
+            MAX(m.popularity) AS popularity,     -- Get the popularity (use MAX for a single value)
+            MAX(r.rating) AS rating,             -- Get the rating (use MAX for a single value)
+            MAX(m.language) AS language,         -- Get the language (use MAX for a single value)
+            MAX(m.total_reviews) AS total_reviews, -- Get the total reviews (use MAX for a single value)
+            MAX(m.studio) AS studio,             -- Get the studio (use MAX for a single value)
+            COUNT(f.follows_id) AS friend_reviews -- Count how many friends have reviewed this movie
         FROM 
             following f
         JOIN 
-            review r ON f.follows_id = r.account_id
+            review r ON f.follows_id = r.account_id  -- Use follows_id to identify reviews by friends
         JOIN 
             media m ON r.media_id = m.id
         JOIN 
             genre g ON m.genre = g.id
         WHERE 
             f.account_id = %s
-            AND r.rating >= 4 -- Consider only highly-rated movies
+            AND r.rating >= 4.5  -- Consider only highly-rated movies
+        GROUP BY 
+            m.id
         ORDER BY 
-            r.rating DESC, m.popularity DESC
+            friend_reviews DESC, MAX(r.rating) DESC, MAX(m.popularity) DESC
         LIMIT 12;
     """
 

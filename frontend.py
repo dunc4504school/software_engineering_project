@@ -30,8 +30,6 @@ def get_connection():
 conn = get_connection()
 cur = conn.cursor()
 
-
-
 def get_symbol(val):
     if val > 0:
         return "✅"
@@ -618,11 +616,6 @@ def social_page():
         for event in events:
             st.write(f"On _**{event[9]}**_ _**{event[5]}**_ Reviewed _**{event[4]}**_ A _**{event[6]}** (**{event[7]}{get_symbol(event[7])}**)_ ")
 
-
-
-
-
-
 #SEARCH PAGE
 def search_page():
     add_background("background.png")
@@ -705,6 +698,7 @@ def fetch_user_reccomendations(account_id):
 
     query = sq.recommend_movies_user(account_id)
     conn = get_connection()
+
     try:
         with conn.cursor() as cur:
             cur.execute(query, (account_id, account_id))
@@ -721,7 +715,7 @@ def fetch_following_reccomendations(account_id):
         st.warning("You need to log in to access the account page.")
         return
 
-    query = sq.recommend_movies_followed(account_id)
+    query = sq.recommend_movies_followed(account_id,)
     conn = get_connection()
     try:
         with conn.cursor() as cur:
@@ -777,9 +771,6 @@ def reccomendations_page():
         st.write("No recommendations found based on followed accounts.")
 
 def display_movies_horizontally(movies):
-    """
-    Display multiple movies in a horizontal layout using Streamlit columns.
-    """
     num_columns = 3  # Number of movies per row
     for i in range(0, len(movies), num_columns):
         cols = st.columns(num_columns)
@@ -788,10 +779,7 @@ def display_movies_horizontally(movies):
                 display_movie_card(movie)
 
 def display_movie_card(movie):
-    """
-    Display a single movie recommendation in a compact card-like format with a white background.
-    """
-    movie_name, genre, popularity, language, total_reviews, studio = movie
+    movie_name, genre, popularity, rating, language, total_reviews, studio, friend_reviews = (movie + (None,) * 8)[:8]
 
     # Define the card style
     card_style = """
@@ -823,9 +811,11 @@ def display_movie_card(movie):
         <h1>{movie_name}</h1>
         <p><strong>Genre:</strong> {genre}</p>
         <p><strong>Popularity:</strong> {popularity}</p>
+        <p><strong>Rating:</strong> {rating}</p>
         <p><strong>Language:</strong> {language}</p>
         <p><strong>Total Reviews:</strong> {total_reviews}</p>
         <p><strong>Studio:</strong> {studio}</p>
+
     </div>
     """
 
