@@ -6,15 +6,6 @@ import pandas as pd
 import unicodedata
 from datetime import datetime, date
 
-
-#Enter Command Line
-#Run: "psql -U postgres"
-#Enter your password
-#Run: "CREATE DATABASE cp317_final"
-#Run "\c cp317_final"
-#Paste db.sql into terminal
-#Run "SET CLIENT_ENCODING TO 'UTF8';"    #READ THIS!!!!!!!!!!!!!!!!!!!
-
 conn = psycopg2.connect(
     host="localhost",
     database='cp317_db',
@@ -26,7 +17,7 @@ cur = conn.cursor()
 
 cur.execute(sq.delete_all())
 
-
+#Rnadom List For ADDITIONAL random generated data
 first_names = [
     "James", "Mary", "John", "Patricia", "Robert", "Jennifer", "Michael", "Linda", 
     "William", "Elizabeth", "David", "Barbara", "Richard", "Susan", "Joseph", "Jessica", 
@@ -37,6 +28,7 @@ last_names = [
     "Moore", "Taylor", "Anderson", "Thomas", "Jackson", "White", "Harris", "Martin", 
     "Thompson", "Garcia", "Martinez", "Robinson", "Bobby", "McGorden", "Black", "Kappor"]
 
+#Setups The Genres For Imported Data
 def setup_genres(row):
 
     #Storing Up To 3 Genres
@@ -64,6 +56,7 @@ def setup_genres(row):
     
     return genre_ids, genre_names
 
+#Setups The Types For Imported Data
 def setup_types(type):
     #Add type to the type table and retrieve its ID
     if type == "TV Movie":
@@ -88,15 +81,19 @@ def setup_types(type):
 
     return type_id
 
+
+#Fills Out The Accounts For Imported Data
 def setup_accounts(accounts):
 
     for row in accounts.itertuples():
+        #Obtains Data
         fname = random.choice(first_names)
         lname = random.choice(last_names)
         user = f"{fname[0]}{lname}{random.randint(100, 999)}"
         date_to = date(2024, 10, random.randint(1,30))
         age = random.randint(18,24)
         
+        #Imports It into database
         cur.execute(sq.add_account_backend(), 
                     (f"{fname} {lname}", row.userId, user, date_to, "TEST", "TEST", "TEST", age))
     conn.commit()
@@ -113,10 +110,10 @@ def add_media(path):
 
 
     for _, row in data.iterrows():
-        genre_ids, genre_names = setup_genres(row)
 
+        #Cleans filtered
+        genre_ids, genre_names = setup_genres(row)
         type_id = setup_types(genre_names[0])
-                    
         studios = eval(row['production_companies']) if row['production_companies'] != "[]" else []  # Safely handle empty studios
         if studios: first_studio_name = studios[0]['name']
 
@@ -139,24 +136,25 @@ def add_media(path):
                     row['adult']
         ))
         conn.commit()
-            
+
+#Adds Imported Reviews      
 def add_review(path):
 
+    #Obtain Data
     data = pd.read_csv(path, compression="zip")
     data = data.dropna()
-
     data['userId'] = data['userId'].astype(int)
     data['movieId'] = data['movieId'].astype(int)
-
-
     accounts = data.groupby('userId')['timestamp'].min().reset_index()
     setup_accounts(accounts)
 
+    #Adds Review
     for row in data.itertuples():
         date_to = date(2024, 11, random.randint(1,30))
         cur.execute(sq.add_review_backend(), 
                     (row.userId, row.movieId, row.rating, "TESTING", date_to, row.movieId, row.userId))
     conn.commit()
+
 
 def add_testing(av):
 
