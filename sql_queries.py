@@ -26,6 +26,8 @@ def add_media():
                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                ON CONFLICT (id) DO NOTHING;"""
 
+
+#Adds Account (for premade data)
 def add_account_backend():
     return """INSERT INTO account(
                                   name, 
@@ -39,7 +41,7 @@ def add_account_backend():
               VALUES(%s, %s, %s, %s, %s, %s, %s, %s)
               ON CONFLICT (username) DO NOTHING"""
 
-#Adds Account
+#Adds Account (user created)
 def add_account():
     return """INSERT INTO account(id,
                                  name, 
@@ -50,6 +52,7 @@ def add_account():
                                   password)
               VALUES(%s, %s, %s, CURRENT_DATE, %s, %s, %s)
               ON CONFLICT (username) DO NOTHING"""
+
 
 #Adds A Following: (account_id now follows follows_id)
 def add_following():
@@ -67,7 +70,7 @@ def add_following():
              SET total_followers = total_followers + 1
              WHERE id = (SELECT follows_id FROM new_follow);"""
 
-
+#Adds a Review (by user)
 def add_review_frontend():
     return """WITH new_review AS (
                 INSERT INTO review (account_id, media_id, rating, description, date_reviewed)
@@ -93,119 +96,34 @@ def add_review_frontend():
             )
             WHERE id = (SELECT media_id FROM new_review);"""
 
-
+#Adds pregenerated review ()
 def add_review_backend():
     return """WITH new_review AS (
-  INSERT INTO review (account_id, media_id, rating, description, date_reviewed)
-  SELECT %s, %s, %s, %s, %s
-  WHERE EXISTS (SELECT 1 FROM media WHERE id = %s)  -- Ensure media_id exists in media table
-  AND EXISTS (SELECT 1 FROM account WHERE id = %s)  -- Ensure account_id exists in account table
-  RETURNING account_id, media_id, rating
-), update_account AS (
-  UPDATE account
-  SET average_review = (
-      (average_review * total_reviews + (SELECT rating FROM new_review)) / (total_reviews + 1)
-  ),
-  average_expected = (
+            INSERT INTO review (account_id, media_id, rating, description, date_reviewed)
+            SELECT %s, %s, %s, %s, %s
+            WHERE EXISTS (SELECT 1 FROM media WHERE id = %s)  -- Ensure media_id exists in media table
+            AND EXISTS (SELECT 1 FROM account WHERE id = %s)  -- Ensure account_id exists in account table
+            RETURNING account_id, media_id, rating
+            ), update_account AS (
+            UPDATE account
+            SET average_review = (
+        (average_review * total_reviews + (SELECT rating FROM new_review)) / (total_reviews + 1)
+        ),
+    average_expected = (
       (average_expected * total_reviews + (SELECT full_average FROM media WHERE id = (SELECT media_id FROM new_review))) / (total_reviews + 1)
-  ),
-  total_reviews = total_reviews + 1
-  WHERE id = (SELECT account_id FROM new_review)
-  RETURNING id
-)
-UPDATE media
-SET total_reviews = total_reviews + 1,
-    full_average = (
-        (full_average * total_reviews + (SELECT rating FROM new_review)) 
-        / (total_reviews + 1)
+    ),
+    total_reviews = total_reviews + 1
+    WHERE id = (SELECT account_id FROM new_review)
+    RETURNING id
     )
-WHERE id = (SELECT media_id FROM new_review);
+    UPDATE media
+    SET total_reviews = total_reviews + 1,
+        full_average = (
+            (full_average * total_reviews + (SELECT rating FROM new_review)) 
+            / (total_reviews + 1)
+        )
+    WHERE id = (SELECT media_id FROM new_review);
    """
-#     return """WITH new_review AS (
-#   INSERT INTO review (account_id, media_id, rating, description, date_reviewed)
-#   SELECT %s, %s, %s, %s, %s
-#   WHERE EXISTS (SELECT 1 FROM media WHERE id = %s)  -- Only insert if media_id exists in media
-#   RETURNING account_id, media_id, rating
-# ), update_account AS (
-#   UPDATE account
-#   SET average_review = (
-#       (average_review * total_reviews + (SELECT rating FROM new_review)) / (total_reviews + 1)
-#   ),
-#   average_expected = (
-#       (average_expected * total_reviews + (SELECT full_average FROM media WHERE id = (SELECT media_id FROM new_review))) / (total_reviews + 1)
-#   ),
-#   total_reviews = total_reviews + 1
-#   WHERE id = (SELECT account_id FROM new_review)
-#   RETURNING id
-# )
-# UPDATE media
-# SET total_reviews = total_reviews + 1,
-#     full_average = (
-#         (full_average * total_reviews + (SELECT rating FROM new_review)) 
-#         / (total_reviews + 1)
-#     )
-# WHERE id = (SELECT media_id FROM new_review);
-
-    
-    
-#     """
-    
-    
-    
-#     """ WITH new_review AS (
-#   INSERT INTO review (account_id, media_id, rating, description, date_reviewed)
-#   VALUES (%s, %s, %s, %s, %s)
-#   ON CONFLICT (media_id) DO NOTHING 
-#   RETURNING account_id, media_id, rating
-# ), update_account AS (
-#   UPDATE account
-#   SET average_review = (
-#       (average_review * total_reviews + (SELECT rating FROM new_review)) / (total_reviews + 1)
-#   ),
-#   average_expected = (
-#       (average_expected * total_reviews + (SELECT full_average FROM media WHERE id = (SELECT media_id FROM new_review))) / (total_reviews + 1)
-#   ),
-#   total_reviews = total_reviews + 1
-#   WHERE id = (SELECT account_id FROM new_review)
-#   RETURNING id
-# )
-# UPDATE media
-# SET total_reviews = total_reviews + 1,
-#     full_average = (
-#         (full_average * total_reviews + (SELECT rating FROM new_review)) 
-#         / (total_reviews + 1)
-#     )
-# WHERE id = (SELECT media_id FROM new_review) """
-
-
-
-    # return """WITH new_review AS (
-    #             INSERT INTO review (account_id, media_id, rating, description, date_reviewed)
-    #             VALUES (%s, %s, %s, %s, %s)
-    #             RETURNING account_id, media_id, rating
-    #           ), update_account AS (
-    #             UPDATE account
-    #             SET average_review = (
-    #                 (average_review * total_reviews + (SELECT rating FROM new_review)) / (total_reviews + 1)
-    #             ),
-    #             average_expected = (
-    #                 (average_expected * total_reviews + (SELECT full_average FROM media WHERE id = (SELECT media_id FROM new_review))) / (total_reviews + 1)
-    #             ),
-    #             total_reviews = total_reviews + 1
-    #             WHERE id = (SELECT account_id FROM new_review)
-    #             RETURNING id
-    #         )
-    #         UPDATE media
-    #         SET total_reviews = total_reviews + 1,
-    #         full_average = (
-    #             (full_average * total_reviews + (SELECT rating FROM new_review)) 
-    #             / (total_reviews + 1)
-    #         )
-    #         WHERE id = (SELECT media_id FROM new_review);"""
-
-
-
-
 
 #----------------------------------------------------------------------------------------
 
@@ -375,6 +293,7 @@ def get_account_review():
         ORDER BY r.date_reviewed DESC;
         """
 
+#Returns a list of reviews
 def get_media_reviews():
     return """
             SELECT 
@@ -492,10 +411,7 @@ def get_recent_reviews():
             LIMIT 5;
         """ 
 
-# Returns 5 most recent reviews for a specific movie
-
-
-
+#Deletes all rows (use for cleaning presetup)
 def delete_all():
         return """
             DELETE from following;
@@ -506,39 +422,39 @@ def delete_all():
             DELETE from genre;
         """
 
-
+#Gets formatted reccomendations
 def reccomendations():
     return """WITH FollowedReviews AS (
-    SELECT 
+        SELECT 
         r.media_id,
         AVG(r.rating) AS avg_rating_from_followed
-    FROM 
+        FROM 
         following f
-    JOIN 
+        JOIN 
         review r ON f.follows_id = r.account_id
-    WHERE 
+        WHERE 
         f.account_id = %s
-    GROUP BY 
+        GROUP BY 
         r.media_id
-)
-SELECT 
+        )
+    SELECT 
     m.id,
     m.name AS media_name,
     m.full_average,
     COALESCE(fr.avg_rating_from_followed, 0) AS avg_rating_from_followed,
     (POWER(m.full_average, 1.2) + POWER(COALESCE(fr.avg_rating_from_followed, 0),1.2)) AS total_score
-FROM 
+    FROM 
     media m
-LEFT JOIN 
+    LEFT JOIN 
     FollowedReviews fr ON m.id = fr.media_id
-WHERE 
+    WHERE 
     m.type = %s 
     AND (m.genre = %s OR m.genre2 = %s OR m.genre3 = %s) 
     AND avg_rating_from_followed > 0
-ORDER BY 
+    ORDER BY 
     total_score DESC; """     
 
-
+#Removes Extra Media (not reviewed)
 def slim_media():
     return """
         DELETE FROM media
@@ -550,13 +466,7 @@ def slim_media():
     """
 
 
-def setup_account_ids():
-    return """
-        SELECT id
-        from account;
-    
-    """
-
+#Makes Movie Reccomendations For a given user
 def recommend_movies_user(user_id):
     return """
         WITH user_review_stats AS (
@@ -626,9 +536,10 @@ def recommend_movies_user(user_id):
         LIMIT 12;
     """
 
+#Gives a list of reccomendations based on followers
 def recommend_movies_followed(user_id):
     return """
-       SELECT
+        SELECT
             m.name AS movie_name,
             MAX(g.name) AS genre_name,           -- Get the genre name (use MAX for a single value)
             MAX(m.popularity) AS popularity,     -- Get the popularity (use MAX for a single value)
@@ -654,7 +565,8 @@ def recommend_movies_followed(user_id):
             friend_reviews DESC, MAX(r.rating) DESC, MAX(m.popularity) DESC
         LIMIT 12;
     """
-
+    
+#Obtains the most reviewed media
 def most_reviewed():
     return """
         SELECT

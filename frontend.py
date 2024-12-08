@@ -30,6 +30,8 @@ def get_connection():
 conn = get_connection()
 cur = conn.cursor()
 
+
+#Get Symbol About How Review Is Relative To Average
 def get_symbol(val):
     if val > 0:
         return "✅"
@@ -143,6 +145,7 @@ def signup_page():
             )
             conn.commit()
 
+            #If Returned Successfully
             if cur.rowcount > 0:
                 st.success("Account created successfully! Redirecting to login...")
                 st.session_state["new_id"] = index
@@ -190,6 +193,7 @@ def login_page():
         else:
             st.warning("Please enter both username and password.")
 
+#Obtains Account Id
 def fetch_account_id():
     account_id =  st.session_state.get("user_id")
     if account_id is None:
@@ -497,6 +501,7 @@ def media_page():
                 conn = get_connection()  # Establish database connection
                 cur = conn.cursor()
 
+                #Get Reviews
                 cur.execute(sq.get_media_reviews(), (st.session_state["selected_movie_id"],st.session_state["user_id"]))
                 print_media_reviews(cur.fetchall())
 
@@ -519,15 +524,19 @@ def print_media_reviews(reviews):
                     st.session_state["current_page"] = "account_profile"
                     st.session_state["selected_account_id"] = review[4]
 
+#Prints a list of following Accounts
 def print_following(following, name, f):
     with st.expander(f"{name} ({len(following)})"):
         for foll in following:
             col11, col22 = st.columns([2, 1])
 
+            #Storing Accounts 
             with col11:
                 if st.button(f"{foll[1]} ({foll[2]}) - {foll[3]}", key=f"{f}{foll[0]}"):
                     st.session_state["current_page"] = "account_profile"
                     st.session_state["selected_account_id"] = foll[0]
+
+            #Storing Remove/Following Button
             with col22:
                 if st.button(f"Remove:", key=f"{f}{foll[0]}R"):
                     if name == "Following":
@@ -568,6 +577,8 @@ def social_page():
 
     st.write("## Discover Accounts")
     query = st.text_input("Search Account:")
+
+    #Gets matching accounts
     if query:
         cur.execute(sq.get_searched_account(), (st.session_state["user_id"], f"%{query.lower()}%"))
         
@@ -575,15 +586,17 @@ def social_page():
         if not matchs:
             st.write("No results found.")
         else:
+            #Prints Matchs
             with st.expander(f"Matchs"):
                 for row in matchs:
                     col11, col22 = st.columns([2, 1])
 
+                    #Account Links
                     with col11:
                         if st.button(f"{row[1]} ({row[2]})"):
                             st.session_state["current_page"] = "account_profile"
                             st.session_state["selected_account_id"] = row[0]
-                    
+                    #Already Followed/Follow button
                     with col22:
                         if row[3] == 1 :
                             st.write("Already Followed")
@@ -594,7 +607,7 @@ def social_page():
                                 st.rerun()
                         
                             
-    
+    #Listing Following/Followers
     st.write("## Your Following")
     cur.execute(sq.get_account_following(), (account_id,))
     print_following(cur.fetchall(), "Following", "F")
@@ -603,13 +616,11 @@ def social_page():
     print_following(cur.fetchall(), "Followers", "f")
 
 
-
+    #Prints Follower Activity
     st.write("## Recent Follower Activity")
     cur.execute(sq.get_account_recent(), (st.session_state["user_id"],))
     events = cur.fetchall()
-
     events = sorted(events, key= lambda row: row[9], reverse=True)
-
     if not events:
         st.write("No Recent Activity")
     else:
@@ -637,7 +648,7 @@ def search_page():
         if movies.empty:
             st.write("No results found.")
         else:
-            
+            #Prints Found Matchs
             for _, row in movies.iterrows():
                 if st.button(f"{row['Name']} ({row['Type']})  -  -  -  {row['Genres']}"):
                     st.session_state["selected_movie_id"] = row["ID"]
@@ -645,6 +656,7 @@ def search_page():
                     st.rerun()
 
 
+#Obtains Data From Matching Movies
 def search_movies(query):
     sql = sq.search_movies_by_attributes()
     search_term = f"%{query.lower()}%"
@@ -665,7 +677,6 @@ def search_movies(query):
 def get_movie_details(movie_id):
     try:
         
-         
         if result:
             
             return {
@@ -736,6 +747,7 @@ def fetch_most_reviewed():
     finally:
         conn.close()
 
+#Opens the page that recomends media
 def reccomendations_page():
     add_background("background.png")
     if st.button("⬅️ Back to Homepage"):
@@ -778,6 +790,7 @@ def display_movies_horizontally(movies):
             with col:
                 display_movie_card(movie)
 
+#Displays media in square format
 def display_movie_card(movie):
     movie_name, genre, popularity, rating, language, total_reviews, studio, friend_reviews = (movie + (None,) * 8)[:8]
 
